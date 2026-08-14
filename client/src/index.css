@@ -145,6 +145,10 @@
   .editor-card__footer { display: flex; justify-content: space-between; align-items: center; padding: 11px 18px; color: rgba(32, 51, 43, 0.5); font: 10px "IBM Plex Mono", monospace; }
   .editor-card__footer span:first-child { display: flex; align-items: center; gap: 7px; }
   .editor-card__footer svg { color: var(--amber); }
+  .clear-scope-note { display: flex; align-items: center; gap: 6px; padding: 0 18px 12px; color: rgba(32, 51, 43, 0.55); font: 10px/1.5 "Noto Sans TC", sans-serif; }
+  .clear-scope-note svg { flex: 0 0 auto; color: var(--amber); }
+  .clear-workspace-button { color: var(--ink-soft); }
+  .clear-workspace-button:hover { color: var(--ink); }
   .parse-error, .parse-warning { display: flex; align-items: flex-start; gap: 8px; padding: 9px 18px; font-size: 10px; line-height: 1.6; }
   .parse-error { background: rgba(163, 76, 56, 0.1); color: #8b493c; }
   .parse-warning { background: rgba(200, 148, 62, 0.1); color: #85652e; }
@@ -304,6 +308,7 @@
     .local-mark__glyph { width: 25px; height: 29px; }
     .input-zone textarea { padding: 16px; }
     .editor-card__footer { padding: 10px 13px; font-size: 9px; }
+    .clear-scope-note { padding: 0 13px 11px; font-size: 9px; }
     .rule-card { min-height: 105px; padding: 11px 10px; }
     .result-card__header { flex-direction: column; }
     .result-card__actions { justify-content: flex-start; }

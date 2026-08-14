@@ -21,7 +21,6 @@ import {
   LoaderCircle,
   LockKeyhole,
   Menu,
-  RotateCcw,
   ScanLine,
   ShieldCheck,
   Sparkles,
@@ -69,8 +68,8 @@ function LocalMark({ compact = false }: { compact?: boolean }) {
         <span />
       </span>
       <span>
-        <strong>LOCAL</strong>
-        {!compact && <small>DE-ID / 本機處理</small>}
+        <strong>無意識</strong>
+        {!compact && <small>去識別化工作站</small>}
       </span>
     </div>
   );
@@ -240,6 +239,7 @@ export default function Home() {
     setCustomTerms([]);
     setActiveStep("source");
     setCopied(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
     toast.success("工作區已清除，未留下原始資料。");
   };
 
@@ -284,7 +284,7 @@ export default function Home() {
         <div className="topbar__brand"><LocalMark /></div>
         <div className="topbar__context">
           <span className="topbar__rule" />
-          <span>DE-IDENTIFICATION WORKBENCH</span>
+          <span>無意識 / 去識別化工作站</span>
         </div>
         <div className="topbar__actions">
           <div className="secure-pill"><ShieldCheck size={15} /> <span>LOCAL ONLY</span></div>
@@ -293,7 +293,6 @@ export default function Home() {
           </button>
           {menuOpen && (
             <div className="menu-popover">
-              <button onClick={clearWorkspace}><Trash2 size={15} /> 清除工作區</button>
               <button onClick={() => toast.info("目前版本不會將資料寫入瀏覽器儲存空間。試算完成後可直接關閉頁面。")}><Info size={15} /> 儲存說明</button>
             </div>
           )}
@@ -317,7 +316,7 @@ export default function Home() {
               <div className="editor-card__title"><span className="section-index">A</span><span>原始資料</span></div>
               <div className="editor-card__tools">
                 <button className="text-button" onClick={loadExample}><Sparkles size={14} /> 載入範例</button>
-                <button className="text-button text-button--quiet" onClick={clearWorkspace}><RotateCcw size={14} /> 重設</button>
+                <button className="text-button text-button--quiet clear-workspace-button" onClick={clearWorkspace} title="清除原文、結果、檔案資訊、OCR 狀態與自訂關鍵字"><Trash2 size={14} /> 清除工作區</button>
               </div>
             </div>
             <div
@@ -356,6 +355,7 @@ export default function Home() {
               <span>{fileName ? <><FolderOpen size={14} /> {fileName} {parsedDocument?.fileType === "xlsx" ? <FileSpreadsheet size={13} /> : parsedDocument?.fileType === "docx" ? <FileType2 size={13} /> : parsedDocument?.fileType === "pdf" ? <FileOutput size={13} /> : null}</> : <><LockKeyhole size={14} /> 只在瀏覽器記憶體中處理</>}</span>
               <span>{countCharacters(input)} 字元</span>
             </div>
+            <div className="clear-scope-note"><Info size={13} /> 清除會移除工作區記憶體中的原文、結果、檔案資訊、OCR 狀態與自訂關鍵字；不影響已下載的結果檔。</div>
             {parseError && <div className="parse-error"><Info size={14} /> {parseError}</div>}
             {parsedDocument?.warnings.map((warning) => <div className={`parse-warning ${warning.includes("本機使用繁體中文 OCR") ? "parse-warning--ocr" : ""}`} key={warning}><Info size={14} /> {warning}</div>)}
           </div>
@@ -412,7 +412,7 @@ export default function Home() {
           <section className="tip-panel"><div className="tip-panel__mark">/ / /</div><p>去識別化是降低風險，不是取代人工判斷。匯出前請檢查結果，確認沒有遺漏需要遮蔽的內容。</p><span>使用提醒 · 0001</span></section>
         </aside>
       </main>
-      <footer className="site-footer"><span>LOCAL DE-ID WORKBENCH</span><span>本機處理 · 無雲端副本 · 可檢查的替換</span><span>v0.1 / 2026</span></footer>
+      <footer className="site-footer"><span>無意識 · 去識別化工作站</span><span>本機處理 · 無雲端副本 · 可檢查的替換</span><span>v0.1 / 2026</span></footer>
     </div>
   );
 }
