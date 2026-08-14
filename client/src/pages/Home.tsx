@@ -1,5 +1,7 @@
 /* Design philosophy: quiet archival utility — asymmetrical workbench, restrained ink-green, amber audit marks. */
 
+// 設計提醒：沿用「安靜的資料保管庫」方向；本頁用檔案索引式流程、克制的琥珀狀態色與清楚的本機資料邊界建立信任。
+
 import { useMemo, useRef, useState } from "react";
 import {
   ArrowDownToLine,
@@ -35,6 +37,7 @@ import {
   exportSpreadsheet,
   exportWord,
   parseDocument,
+  type DocumentParseProgress,
   type ParsedDocument,
 } from "@/lib/documents";
 import {
@@ -49,6 +52,9 @@ Email：ming.wang@example.com
 電話：0912-345-678
 身分證字號：A123456789
 預約日期：2026-08-14
+寄送地址：桃園市桃園區中正路100號5樓
+會議地點：台北101
+服務區域：北部地區
 連線來源：192.168.1.24`;
 
 type Step = "source" | "rules" | "result";
@@ -62,7 +68,7 @@ function LocalMark({ compact = false }: { compact?: boolean }) {
       </span>
       <span>
         <strong>LOCAL</strong>
-        {!compact && <small>資料只在本機處理</small>}
+        {!compact && <small>DE-ID / 本機處理</small>}
       </span>
     </div>
   );
@@ -115,10 +121,11 @@ function PrivacyPanel() {
         <span>PRIVATE BY DEFAULT</span>
       </div>
       <h2>資料不離開這台裝置。</h2>
-      <p>所有比對與替換都在瀏覽器記憶體中執行。關閉頁面或按下清除後，工作區內容就不再保留。</p>
+      <p>所有比對、替換與掃描 PDF OCR 都在瀏覽器記憶體中執行。關閉頁面或按下清除後，工作區內容就不再保留。</p>
       <div className="privacy-panel__list">
         <span><CheckCircle2 size={15} /> 不使用後端 API</span>
         <span><CheckCircle2 size={15} /> 不儲存原始文字</span>
+        <span><CheckCircle2 size={15} /> OCR 在本機 Web Worker 執行</span>
         <span><CheckCircle2 size={15} /> 可隨時清除工作區</span>
       </div>
     </section>
@@ -135,6 +142,7 @@ export default function Home() {
   const [fileName, setFileName] = useState("");
   const [parsedDocument, setParsedDocument] = useState<ParsedDocument | null>(null);
   const [isParsing, setIsParsing] = useState(false);
+  const [parseProgress, setParseProgress] = useState<DocumentParseProgress | null>(null);
   const [parseError, setParseError] = useState("");
   const [showDiff, setShowDiff] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -167,8 +175,9 @@ export default function Home() {
     if (!file) return;
     setIsParsing(true);
     setParseError("");
+    setParseProgress(null);
     try {
-      const parsed = await parseDocument(file);
+      const parsed = await parseDocument(file, { onProgress: setParseProgress });
       setInput(parsed.text);
       setFileName(file.name);
       setParsedDocument(parsed);
@@ -182,6 +191,7 @@ export default function Home() {
       toast.error(message);
     } finally {
       setIsParsing(false);
+      setParseProgress(null);
     }
   };
 
@@ -204,6 +214,7 @@ export default function Home() {
     setFileName("");
     setParsedDocument(null);
     setParseError("");
+    setParseProgress(null);
     setShowDiff(false);
     setCustomInput("");
     setCustomTerms([]);
@@ -240,6 +251,7 @@ export default function Home() {
     setFileName("");
     setParsedDocument(null);
     setParseError("");
+    setParseProgress(null);
     setResult("");
     setShowDiff(false);
     setActiveStep("rules");
@@ -277,7 +289,7 @@ export default function Home() {
               <span className="eyebrow">01 / LOCAL REDACTION</span>
               <h1>讓敏感內容<br /><em>留在原地。</em></h1>
             </div>
-            <p className="intro-note">貼上文字或讀取檔案，選定規則後在此裝置完成去識別化。<br />不需要登入，也不需要將資料交給第三方服務。</p>
+            <p className="intro-note">貼上文字或讀取檔案，選定規則後在此裝置完成去識別化。<br />掃描 PDF 會先在本機辨識，再進入同一套規則。</p>
           </div>
 
           <div className="editor-card rise-in" style={{ animationDelay: "70ms" }}>
@@ -304,18 +316,27 @@ export default function Home() {
                 <div className="input-zone__empty">
                   <div className="empty-icon"><FileText size={21} /></div>
                   <strong>尚未放入資料</strong>
-                  <span>支援 TXT、CSV、JSON、Excel、Word 與 PDF</span>
+                  <span>支援 TXT、CSV、JSON、Excel、Word、PDF 與掃描 PDF</span>
                   <button className="upload-button" onClick={() => fileInputRef.current?.click()} disabled={isParsing}>{isParsing ? <LoaderCircle className="spin" size={15} /> : <Upload size={15} />} {isParsing ? "本機解析中" : "選取檔案"}</button>
                   <input ref={fileInputRef} type="file" accept=".txt,.csv,.json,.xlsx,.xls,.docx,.pdf,text/plain,text/csv,application/json,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(event) => handleFile(event.target.files?.[0])} hidden />
                 </div>
               )}
             </div>
+            {isParsing && parseProgress && (
+              <div className="ocr-progress" role="status" aria-live="polite">
+                <div className="ocr-progress__header">
+                  <span className="ocr-progress__copy"><LoaderCircle className="spin" size={14} /><span><strong>{parseProgress.phase === "ocr" ? "本機 OCR 處理中" : "正在讀取 PDF"}</strong><small>{parseProgress.message}</small></span></span>
+                  <span>{parseProgress.currentPage} / {parseProgress.totalPages} 頁</span>
+                </div>
+                <div className="ocr-progress__track"><span style={{ width: `${Math.round((parseProgress.currentPage / Math.max(parseProgress.totalPages, 1)) * 100)}%` }} /></div>
+              </div>
+            )}
             <div className="editor-card__footer">
               <span>{fileName ? <><FolderOpen size={14} /> {fileName} {parsedDocument?.fileType === "xlsx" ? <FileSpreadsheet size={13} /> : parsedDocument?.fileType === "docx" ? <FileType2 size={13} /> : parsedDocument?.fileType === "pdf" ? <FileOutput size={13} /> : null}</> : <><LockKeyhole size={14} /> 只在瀏覽器記憶體中處理</>}</span>
               <span>{countCharacters(input)} 字元</span>
             </div>
             {parseError && <div className="parse-error"><Info size={14} /> {parseError}</div>}
-            {parsedDocument?.warnings.map((warning) => <div className="parse-warning" key={warning}><Info size={14} /> {warning}</div>)}
+            {parsedDocument?.warnings.map((warning) => <div className={`parse-warning ${warning.includes("本機使用繁體中文 OCR") ? "parse-warning--ocr" : ""}`} key={warning}><Info size={14} /> {warning}</div>)}
           </div>
 
           <div className="rules-section rise-in" style={{ animationDelay: "140ms" }}>
@@ -360,7 +381,8 @@ export default function Home() {
             <div className="stat-row"><span>目前工作區</span><strong>{input ? "已載入" : "空白"}</strong></div>
             <div className="stat-row"><span>啟用規則</span><strong>{enabledRules.length} 項</strong></div>
             <div className="stat-row"><span>已找到項目</span><strong className="amber-text">{analysis.total}</strong></div>
-            <div className="stat-row"><span>原文上傳</span><strong className="green-text">否</strong></div>
+              <div className="stat-row"><span>本機 OCR 頁數</span><strong className="amber-text">{parsedDocument?.ocrPageCount ?? 0}</strong></div>
+              <div className="stat-row"><span>原文上傳</span><strong className="green-text">否</strong></div>
           </section>
           <section className="tip-panel"><div className="tip-panel__mark">/ / /</div><p>去識別化是降低風險，不是取代人工判斷。匯出前請檢查結果，確認沒有遺漏需要遮蔽的內容。</p><span>使用提醒 · 0001</span></section>
         </aside>

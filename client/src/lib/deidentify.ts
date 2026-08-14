@@ -1,5 +1,7 @@
 /* Design philosophy: quiet archival utility — make every transformation explicit, local, and auditable. */
 
+// 設計提醒：規則順序也是介面語言；先處理空間位置，再處理識別與技術欄位，讓檔案校閱從高風險內容開始。
+
 export type RuleId = "email" | "phone" | "taiwanId" | "date" | "ip" | "address" | "placeName" | "region";
 
 export type DeidentifyRule = {
@@ -17,36 +19,6 @@ export type DeidentifyResult = {
 
 export const DEFAULT_RULES: DeidentifyRule[] = [
   {
-    id: "email",
-    label: "電子郵件",
-    detail: "辨識常見 Email 格式",
-    replacement: "[EMAIL]",
-  },
-  {
-    id: "phone",
-    label: "電話號碼",
-    detail: "辨識台灣手機與市話格式",
-    replacement: "[PHONE]",
-  },
-  {
-    id: "taiwanId",
-    label: "身分證字號",
-    detail: "辨識台灣身分證字號格式",
-    replacement: "[ID_NUMBER]",
-  },
-  {
-    id: "date",
-    label: "日期",
-    detail: "辨識西元年月日與常見分隔符",
-    replacement: "[DATE]",
-  },
-  {
-    id: "ip",
-    label: "IP 位址",
-    detail: "辨識 IPv4 位址格式",
-    replacement: "[IP_ADDRESS]",
-  },
-  {
     id: "address",
     label: "地址",
     detail: "辨識臺灣縣市、行政區與道路門牌",
@@ -63,6 +35,36 @@ export const DEFAULT_RULES: DeidentifyRule[] = [
     label: "區域",
     detail: "辨識縣市、行政區與北中南東區域",
     replacement: "[REGION]",
+  },
+  {
+    id: "taiwanId",
+    label: "身分證字號",
+    detail: "辨識台灣身分證字號格式",
+    replacement: "[ID_NUMBER]",
+  },
+  {
+    id: "email",
+    label: "電子郵件",
+    detail: "辨識常見 Email 格式",
+    replacement: "[EMAIL]",
+  },
+  {
+    id: "phone",
+    label: "電話號碼",
+    detail: "辨識台灣手機與市話格式",
+    replacement: "[PHONE]",
+  },
+  {
+    id: "date",
+    label: "日期",
+    detail: "辨識西元年月日與常見分隔符",
+    replacement: "[DATE]",
+  },
+  {
+    id: "ip",
+    label: "IP 位址",
+    detail: "辨識 IPv4 位址格式",
+    replacement: "[IP_ADDRESS]",
   },
 ];
 

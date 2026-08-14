@@ -1,12 +1,24 @@
 /* Design philosophy: quiet archival utility — document operations stay local, explicit, and reversible. */
 
+// 設計提醒：文件處理與 OCR 均在瀏覽器記憶體完成；這個模組只負責解析、進度回報與本機匯出。
+
+import { createPdfOcrWorker, recognizePdfPage, type PdfOcrWorker } from "./ocr";
+
 export type SupportedDocumentType = "xlsx" | "docx" | "pdf" | "text";
+
+export type DocumentParseProgress = {
+  phase: "reading" | "ocr";
+  currentPage: number;
+  totalPages: number;
+  message: string;
+};
 
 export type ParsedDocument = {
   text: string;
   fileName: string;
   fileType: SupportedDocumentType;
   pageCount?: number;
+  ocrPageCount?: number;
   sheetCount?: number;
   warnings: string[];
 };
@@ -64,7 +76,7 @@ async function parseWord(file: File): Promise<ParsedDocument> {
   };
 }
 
-async function parsePdf(file: File): Promise<ParsedDocument> {
+async function parsePdf(file: File, onProgress?: (progress: DocumentParseProgress) => void): Promise<ParsedDocument> {
   const [{ getDocument, GlobalWorkerOptions }, workerModule] = await Promise.all([
     import("pdfjs-dist"),
     import("pdfjs-dist/build/pdf.worker.mjs?url"),
@@ -73,16 +85,46 @@ async function parsePdf(file: File): Promise<ParsedDocument> {
   const buffer = await file.arrayBuffer();
   const pdf = await getDocument({ data: new Uint8Array(buffer) }).promise;
   const pages: string[] = [];
+  const pagesWithoutText: number[] = [];
+  let ocrPageCount = 0;
+  let ocrWorker: PdfOcrWorker | null = null;
 
-  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
-    const page = await pdf.getPage(pageNumber);
-    const content = await page.getTextContent();
-    const lines = content.items
-      .map((item) => ("str" in item ? item.str : ""))
-      .join(" ")
-      .replace(/\s+/g, " ")
-      .trim();
-    if (lines) pages.push(`【第 ${pageNumber} 頁】\n${lines}`);
+  try {
+    for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+      onProgress?.({ phase: "reading", currentPage: pageNumber, totalPages: pdf.numPages, message: "正在讀取 PDF 文字層" });
+      const page = await pdf.getPage(pageNumber);
+      const content = await page.getTextContent();
+      const lines = content.items
+        .map((item) => ("str" in item ? item.str : ""))
+        .join(" ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      if (lines) {
+        pages.push(`【第 ${pageNumber} 頁】\n${lines}`);
+        continue;
+      }
+
+      pagesWithoutText.push(pageNumber);
+      onProgress?.({ phase: "ocr", currentPage: pageNumber, totalPages: pdf.numPages, message: ocrWorker ? "正在辨識掃描頁面文字" : "正在啟動本機繁體中文 OCR" });
+      if (!ocrWorker) ocrWorker = await createPdfOcrWorker();
+      const ocrText = await recognizePdfPage(ocrWorker, page);
+      ocrPageCount += 1;
+      if (ocrText) pages.push(`【第 ${pageNumber} 頁】\n${ocrText}`);
+      onProgress?.({ phase: "ocr", currentPage: pageNumber, totalPages: pdf.numPages, message: ocrText ? "已完成本機 OCR" : "此頁未辨識到文字" });
+    }
+  } finally {
+    if (ocrWorker) await ocrWorker.terminate();
+    pdf.cleanup();
+  }
+
+  const warnings: string[] = [];
+  if (ocrPageCount > 0) {
+    warnings.push(`PDF 有 ${ocrPageCount} 頁沒有可選取的文字，已在瀏覽器本機使用繁體中文 OCR 辨識；OCR 結果仍建議人工複核。`);
+  }
+  const unreadablePages = pagesWithoutText.filter((pageNumber) => !pages.some((page) => page.startsWith(`【第 ${pageNumber} 頁】`)));
+  if (unreadablePages.length > 0) {
+    warnings.push(`第 ${unreadablePages.join("、")} 頁未辨識到文字，請確認影像清晰度或改用人工檢查。`);
   }
 
   return {
@@ -90,18 +132,19 @@ async function parsePdf(file: File): Promise<ParsedDocument> {
     fileName: file.name,
     fileType: "pdf",
     pageCount: pdf.numPages,
-    warnings: ["PDF 僅能擷取可選取的文字；掃描影像或圖片內文字需要另外加入 OCR。"],
+    ocrPageCount,
+    warnings,
   };
 }
 
-export async function parseDocument(file: File): Promise<ParsedDocument> {
+export async function parseDocument(file: File, options: { onProgress?: (progress: DocumentParseProgress) => void } = {}): Promise<ParsedDocument> {
   const fileType = detectType(file);
   if (!fileType) throw new Error("目前支援 TXT、CSV、JSON、XLSX、XLS、DOCX 與 PDF 檔案。");
   if (file.size > 25 * 1024 * 1024) throw new Error("目前限制單一檔案不超過 25 MB，以維持本機瀏覽器處理穩定性。");
 
   if (fileType === "xlsx") return parseSpreadsheet(file);
   if (fileType === "docx") return parseWord(file);
-  if (fileType === "pdf") return parsePdf(file);
+  if (fileType === "pdf") return parsePdf(file, options.onProgress);
 
   return {
     text: await file.text(),

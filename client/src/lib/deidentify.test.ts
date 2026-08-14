@@ -1,7 +1,7 @@
 /* Design philosophy: quiet archival utility — tests protect predictable, auditable transformations. */
 
 import { describe, expect, it } from "vitest";
-import { deidentifyText } from "./deidentify";
+import { DEFAULT_RULES, deidentifyText } from "./deidentify";
 
 describe("deidentifyText", () => {
   it("replaces enabled sensitive patterns and reports counts", () => {
@@ -50,5 +50,18 @@ describe("deidentifyText", () => {
     expect(output.counts.placeName).toBe(1);
     expect(output.counts.region).toBe(1);
     expect(output.total).toBe(2);
+  });
+
+  it("keeps the eight default rules in location-first order", () => {
+    expect(DEFAULT_RULES.map((rule) => rule.id)).toEqual([
+      "address",
+      "placeName",
+      "region",
+      "taiwanId",
+      "email",
+      "phone",
+      "date",
+      "ip",
+    ]);
   });
 });
