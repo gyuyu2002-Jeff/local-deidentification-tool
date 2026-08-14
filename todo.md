@@ -81,3 +81,9 @@
 - [x] 確認目前登入的 GitHub 帳號與專案既有遠端設定。
 - [x] 整理並提交最新「流動幻彩」品牌資產與網站程式碼。
 - [x] 推送至正確的 GitHub repository，並驗證遠端最新 commit 與檔案內容。
+
+## GitHub 公開化
+
+- [x] 確認公開 repository 不包含不應公開的環境變數、憑證或原始個人資料。
+- [x] 將 `local-deidentification-tool` 的可見性由私人改為公開。
+- [x] 驗證公開網址、repository 狀態與 main 分支內容可被外部讀取。
