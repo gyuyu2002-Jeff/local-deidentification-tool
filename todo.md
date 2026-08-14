@@ -87,3 +87,9 @@
 - [x] 確認公開 repository 不包含不應公開的環境變數、憑證或原始個人資料。
 - [x] 將 `local-deidentification-tool` 的可見性由私人改為公開。
 - [x] 驗證公開網址、repository 狀態與 main 分支內容可被外部讀取。
+
+## GitHub Pages 部署
+
+- [ ] 檢查 Vite 靜態輸出、base 路徑、檔案資產與瀏覽器端功能對 GitHub Pages 的相容性。
+- [ ] 加入 GitHub Actions 建置與部署 workflow，並設定 Pages 使用 Actions 發布。
+- [ ] 推送部署設定，等待 workflow 完成並驗證 GitHub Pages 公開網址。

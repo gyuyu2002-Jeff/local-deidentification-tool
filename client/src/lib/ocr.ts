@@ -3,7 +3,8 @@
 import workerPath from "tesseract.js/dist/worker.min.js?url";
 import type { PDFPageProxy } from "pdfjs-dist";
 
-const CHINESE_LANGUAGE_DATA_URL = "/manus-storage/chi_tra.traineddata_2eacdbbf.gz";
+const CHINESE_LANGUAGE_DATA_URL =
+  import.meta.env.VITE_OCR_LANGUAGE_DATA_URL ?? "/manus-storage/chi_tra.traineddata_2eacdbbf.gz";
 
 export type PdfPageLike = Pick<PDFPageProxy, "getViewport" | "render">;
 
