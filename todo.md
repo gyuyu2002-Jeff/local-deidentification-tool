@@ -90,6 +90,7 @@
 
 ## GitHub Pages 部署
 
-- [ ] 檢查 Vite 靜態輸出、base 路徑、檔案資產與瀏覽器端功能對 GitHub Pages 的相容性。
-- [ ] 加入 GitHub Actions 建置與部署 workflow，並設定 Pages 使用 Actions 發布。
-- [ ] 推送部署設定，等待 workflow 完成並驗證 GitHub Pages 公開網址。
+- [x] 檢查 Vite 靜態輸出、base 路徑、檔案資產與瀏覽器端功能對 GitHub Pages 的相容性。
+- [x] 加入 GitHub Actions 建置與部署 workflow，並設定 Pages 使用 Actions 發布。
+- [x] 修正 Wouter 對 repository 子路徑的路由匹配，避免 GitHub Pages 首頁顯示 404。
+- [x] 推送部署設定，等待 workflow 完成並驗證 GitHub Pages 公開網址。
