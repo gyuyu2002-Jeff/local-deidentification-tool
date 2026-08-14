@@ -94,3 +94,10 @@
 - [x] 加入 GitHub Actions 建置與部署 workflow，並設定 Pages 使用 Actions 發布。
 - [x] 修正 Wouter 對 repository 子路徑的路由匹配，避免 GitHub Pages 首頁顯示 404。
 - [x] 推送部署設定，等待 workflow 完成並驗證 GitHub Pages 公開網址。
+
+## GitHub Pages PDF 下載修復
+
+- [x] 在 GitHub Pages 線上重現 PDF 下載失敗並記錄瀏覽器測試限制與問題範圍。
+- [x] 盤點 PDF 匯出套件、動態載入與下載檔案命名流程。
+- [x] 修正 PDF 匯出在部署環境的相容性問題，維持本機瀏覽器端處理。
+- [ ] 完成 PDF 下載、其他格式匯出、型別檢查、測試、正式建置與 Pages 部署驗證。
