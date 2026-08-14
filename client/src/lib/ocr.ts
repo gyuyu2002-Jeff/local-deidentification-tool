@@ -9,7 +9,18 @@ export type PdfPageLike = Pick<PDFPageProxy, "getViewport" | "render">;
 
 export type PdfOcrWorker = Awaited<ReturnType<typeof createPdfOcrWorker>>;
 
-export async function createPdfOcrWorker() {
+export type PdfOcrLog = {
+  status: string;
+  progress: number;
+};
+
+export type PdfPageProgress = {
+  stage: "rendering" | "recognizing";
+  progress: number;
+  message: string;
+};
+
+export async function createPdfOcrWorker(onProgress?: (log: PdfOcrLog) => void) {
   const [{ createWorker, OEM }, languageResponse] = await Promise.all([
     import("tesseract.js"),
     fetch(CHINESE_LANGUAGE_DATA_URL, { cache: "force-cache" }),
@@ -28,6 +39,14 @@ export async function createPdfOcrWorker() {
       workerBlobURL: false,
       gzip: true,
       cacheMethod: "write",
+      logger: (message) => {
+        if (message.status) {
+          onProgress?.({
+            status: message.status,
+            progress: typeof message.progress === "number" ? message.progress : 0,
+          });
+        }
+      },
     },
   );
 
@@ -39,7 +58,7 @@ export async function createPdfOcrWorker() {
   return worker;
 }
 
-export async function recognizePdfPage(worker: PdfOcrWorker, page: PdfPageLike) {
+export async function recognizePdfPage(worker: PdfOcrWorker, page: PdfPageLike, onProgress?: (progress: PdfPageProgress) => void) {
   const initialViewport = page.getViewport({ scale: 1 });
   const longestSide = Math.max(initialViewport.width, initialViewport.height);
   const scale = Math.min(2.2, Math.max(1.5, 2200 / longestSide));
@@ -51,8 +70,11 @@ export async function recognizePdfPage(worker: PdfOcrWorker, page: PdfPageLike) 
   try {
     const context = canvas.getContext("2d", { willReadFrequently: true });
     if (!context) throw new Error("瀏覽器無法建立 PDF OCR 畫布。");
+    onProgress?.({ stage: "rendering", progress: 0, message: "正在將掃描頁轉換為高解析度影像" });
     await page.render({ canvasContext: context, canvas, viewport }).promise;
+    onProgress?.({ stage: "recognizing", progress: 0, message: "正在辨識掃描頁文字" });
     const { data } = await worker.recognize(canvas, {}, { text: true });
+    onProgress?.({ stage: "recognizing", progress: 1, message: "本頁 OCR 已完成" });
     return data.text.trim();
   } finally {
     canvas.width = 1;

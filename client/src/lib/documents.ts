@@ -7,10 +7,12 @@ import { createPdfOcrWorker, recognizePdfPage, type PdfOcrWorker } from "./ocr";
 export type SupportedDocumentType = "xlsx" | "docx" | "pdf" | "text";
 
 export type DocumentParseProgress = {
-  phase: "reading" | "ocr";
+  phase: "preparing" | "reading" | "rendering" | "ocr" | "complete";
   currentPage: number;
   totalPages: number;
+  percent: number;
   message: string;
+  detail: string;
 };
 
 export type ParsedDocument = {
@@ -88,10 +90,14 @@ async function parsePdf(file: File, onProgress?: (progress: DocumentParseProgres
   const pagesWithoutText: number[] = [];
   let ocrPageCount = 0;
   let ocrWorker: PdfOcrWorker | null = null;
+  let activeOcrPage = 0;
+  const totalPages = pdf.numPages;
+  const report = (progress: Omit<DocumentParseProgress, "totalPages">) => onProgress?.({ ...progress, totalPages });
 
   try {
-    for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
-      onProgress?.({ phase: "reading", currentPage: pageNumber, totalPages: pdf.numPages, message: "正在讀取 PDF 文字層" });
+    report({ phase: "reading", currentPage: 0, percent: 0, message: "PDF 已載入，正在檢查文字層", detail: `共 ${totalPages} 頁；有文字的頁面會直接解析，掃描頁才會啟用 OCR。` });
+    for (let pageNumber = 1; pageNumber <= totalPages; pageNumber += 1) {
+      report({ phase: "reading", currentPage: pageNumber, percent: Math.round(((pageNumber - 1) / totalPages) * 100), message: "正在讀取 PDF 文字層", detail: `正在檢查第 ${pageNumber} / ${totalPages} 頁是否包含可選取文字。` });
       const page = await pdf.getPage(pageNumber);
       const content = await page.getTextContent();
       const lines = content.items
@@ -106,12 +112,31 @@ async function parsePdf(file: File, onProgress?: (progress: DocumentParseProgres
       }
 
       pagesWithoutText.push(pageNumber);
-      onProgress?.({ phase: "ocr", currentPage: pageNumber, totalPages: pdf.numPages, message: ocrWorker ? "正在辨識掃描頁面文字" : "正在啟動本機繁體中文 OCR" });
-      if (!ocrWorker) ocrWorker = await createPdfOcrWorker();
-      const ocrText = await recognizePdfPage(ocrWorker, page);
+      activeOcrPage = pageNumber;
+      report({ phase: "rendering", currentPage: pageNumber, percent: Math.round(((pageNumber - 1) / totalPages) * 100), message: "正在準備掃描頁", detail: `第 ${pageNumber} / ${totalPages} 頁沒有可選取文字，準備轉成影像。` });
+      if (!ocrWorker) {
+        report({ phase: "ocr", currentPage: pageNumber, percent: Math.round(((pageNumber - 1) / totalPages) * 100), message: "正在啟動本機繁體中文 OCR", detail: "首次使用會載入本機 Web Worker 與語言模型，檔案內容不會離開瀏覽器。" });
+        ocrWorker = await createPdfOcrWorker(({ status, progress }) => {
+          const normalized = Math.min(Math.max(progress, 0), 1);
+          const percent = Math.round(((activeOcrPage - 1 + normalized) / totalPages) * 100);
+          const message = status === "loading language traineddata"
+            ? "正在載入本機繁體中文模型"
+            : status === "recognizing text"
+              ? "正在辨識掃描頁面文字"
+              : status === "initializing api"
+                ? "正在初始化本機 OCR 引擎"
+                : "本機 OCR 引擎準備中";
+          report({ phase: "ocr", currentPage: activeOcrPage, percent, message, detail: `第 ${activeOcrPage} / ${totalPages} 頁 · 本頁 ${Math.round(normalized * 100)}%` });
+        });
+      }
+      const ocrText = await recognizePdfPage(ocrWorker, page, ({ stage, progress, message }) => {
+        const normalized = Math.min(Math.max(progress, 0), 1);
+        const percent = Math.round(((pageNumber - 1 + normalized) / totalPages) * 100);
+        report({ phase: stage === "rendering" ? "rendering" : "ocr", currentPage: pageNumber, percent, message, detail: `第 ${pageNumber} / ${totalPages} 頁 · 本頁 ${Math.round(normalized * 100)}%` });
+      });
       ocrPageCount += 1;
       if (ocrText) pages.push(`【第 ${pageNumber} 頁】\n${ocrText}`);
-      onProgress?.({ phase: "ocr", currentPage: pageNumber, totalPages: pdf.numPages, message: ocrText ? "已完成本機 OCR" : "此頁未辨識到文字" });
+      report({ phase: "ocr", currentPage: pageNumber, percent: Math.round((pageNumber / totalPages) * 100), message: ocrText ? "已完成本機 OCR" : "此頁未辨識到文字", detail: `第 ${pageNumber} / ${totalPages} 頁已完成；${ocrText ? "結果已加入待處理文字。" : "請在完成後人工檢查此頁。"}` });
     }
   } finally {
     if (ocrWorker) await ocrWorker.terminate();
@@ -126,6 +151,8 @@ async function parsePdf(file: File, onProgress?: (progress: DocumentParseProgres
   if (unreadablePages.length > 0) {
     warnings.push(`第 ${unreadablePages.join("、")} 頁未辨識到文字，請確認影像清晰度或改用人工檢查。`);
   }
+
+  report({ phase: "complete", currentPage: totalPages, percent: 100, message: "PDF 本機解析完成", detail: `文字層 ${totalPages - ocrPageCount} 頁 · OCR ${ocrPageCount} 頁 · 可進入規則設定。` });
 
   return {
     text: pages.join("\n\n"),

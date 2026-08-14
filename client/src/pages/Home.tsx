@@ -57,6 +57,8 @@ Email：ming.wang@example.com
 服務區域：北部地區
 連線來源：192.168.1.24`;
 
+const ALL_RULE_IDS = DEFAULT_RULES.map((rule) => rule.id);
+
 type Step = "source" | "rules" | "result";
 
 function LocalMark({ compact = false }: { compact?: boolean }) {
@@ -136,7 +138,7 @@ export default function Home() {
   const [input, setInput] = useState("");
   const [result, setResult] = useState("");
   const [activeStep, setActiveStep] = useState<Step>("source");
-  const [enabledRules, setEnabledRules] = useState<RuleId[]>(DEFAULT_RULES.map((rule) => rule.id));
+  const [enabledRules, setEnabledRules] = useState<RuleId[]>(ALL_RULE_IDS);
   const [customTerms, setCustomTerms] = useState<string[]>([]);
   const [customInput, setCustomInput] = useState("");
   const [fileName, setFileName] = useState("");
@@ -158,6 +160,18 @@ export default function Home() {
     () => deidentifyText(input, enabledRules, customTerms),
     [input, enabledRules, customTerms],
   );
+  const progressTitle = parseProgress?.phase === "preparing"
+    ? "正在準備本機解析"
+    : parseProgress?.phase === "ocr"
+    ? "本機 OCR 辨識中"
+    : parseProgress?.phase === "rendering"
+      ? "正在準備掃描頁"
+      : parseProgress?.phase === "complete"
+        ? "PDF 解析完成"
+        : "正在讀取 PDF";
+  const progressPageLabel = parseProgress && parseProgress.totalPages > 0
+    ? `第 ${parseProgress.currentPage} / ${parseProgress.totalPages} 頁`
+    : "正在建立 PDF 工作區";
 
   const processText = () => {
     if (!input.trim()) {
@@ -175,7 +189,7 @@ export default function Home() {
     if (!file) return;
     setIsParsing(true);
     setParseError("");
-    setParseProgress(null);
+    setParseProgress({ phase: "preparing", currentPage: 0, totalPages: 0, percent: 0, message: "正在準備本機解析", detail: `正在讀取 ${file.name}；掃描 PDF 會逐頁顯示 OCR 進度。` });
     try {
       const parsed = await parseDocument(file, { onProgress: setParseProgress });
       setInput(parsed.text);
@@ -198,6 +212,12 @@ export default function Home() {
   const toggleRule = (id: RuleId) => {
     setEnabledRules((current) => current.includes(id) ? current.filter((ruleId) => ruleId !== id) : [...current, id]);
     setResult("");
+  };
+
+  const setAllRules = (enabled: boolean) => {
+    setEnabledRules(enabled ? [...ALL_RULE_IDS] : []);
+    setResult("");
+    toast.info(enabled ? `已全選 ${DEFAULT_RULES.length} 項規則。` : "已全不選規則，請確認是否仍要執行去識別化。");
   };
 
   const addCustomTerm = () => {
@@ -325,10 +345,11 @@ export default function Home() {
             {isParsing && parseProgress && (
               <div className="ocr-progress" role="status" aria-live="polite">
                 <div className="ocr-progress__header">
-                  <span className="ocr-progress__copy"><LoaderCircle className="spin" size={14} /><span><strong>{parseProgress.phase === "ocr" ? "本機 OCR 處理中" : "正在讀取 PDF"}</strong><small>{parseProgress.message}</small></span></span>
-                  <span>{parseProgress.currentPage} / {parseProgress.totalPages} 頁</span>
+                  <span className="ocr-progress__copy"><LoaderCircle className="spin" size={14} /><span><strong>{progressTitle}</strong><small>{parseProgress.message}</small></span></span>
+                  <span className="ocr-progress__percent">{parseProgress.percent}%</span>
                 </div>
-                <div className="ocr-progress__track"><span style={{ width: `${Math.round((parseProgress.currentPage / Math.max(parseProgress.totalPages, 1)) * 100)}%` }} /></div>
+                <div className="ocr-progress__meta"><span>{progressPageLabel}</span><span>{parseProgress.detail}</span></div>
+                <div className="ocr-progress__track" role="progressbar" aria-label="PDF 本機 OCR 進度" aria-valuenow={parseProgress.percent} aria-valuemin={0} aria-valuemax={100}><span style={{ width: `${parseProgress.percent}%` }} /></div>
               </div>
             )}
             <div className="editor-card__footer">
@@ -342,7 +363,11 @@ export default function Home() {
           <div className="rules-section rise-in" style={{ animationDelay: "140ms" }}>
             <div className="section-heading">
               <div><span className="section-index">B</span><h2>去識別化規則</h2></div>
-              <span className="rule-count">{enabledRules.length} / {DEFAULT_RULES.length} 啟用</span>
+              <div className="section-heading__actions">
+                <span className="rule-count">{enabledRules.length} / {DEFAULT_RULES.length} 啟用</span>
+                <button className="text-button quick-toggle" onClick={() => setAllRules(true)} disabled={enabledRules.length === DEFAULT_RULES.length}>全選</button>
+                <button className="text-button quick-toggle text-button--quiet" onClick={() => setAllRules(false)} disabled={enabledRules.length === 0}>全不選</button>
+              </div>
             </div>
             <div className="rule-grid">
               {DEFAULT_RULES.map((rule) => {
