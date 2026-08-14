@@ -263,36 +263,60 @@ export async function exportWord(text: string, fileName: string) {
   URL.revokeObjectURL(url);
 }
 
+function wrapPdfText(text: string, context: CanvasRenderingContext2D, maxWidth: number) {
+  const lines: string[] = [];
+  for (const sourceLine of text.replace(/\r\n?/g, "\n").split("\n")) {
+    if (!sourceLine) {
+      lines.push("");
+      continue;
+    }
+
+    let current = "";
+    for (const character of sourceLine) {
+      const candidate = current + character;
+      if (current && context.measureText(candidate).width > maxWidth) {
+        lines.push(current);
+        current = character;
+      } else {
+        current = candidate;
+      }
+    }
+    lines.push(current);
+  }
+  return lines;
+}
+
 export async function exportPdf(text: string, fileName: string) {
   const { default: jsPDF } = await import("jspdf");
   const pdf = new jsPDF({ unit: "pt", format: "a4" });
-  const wrapper = document.createElement("div");
-  wrapper.style.position = "fixed";
-  wrapper.style.left = "-10000px";
-  wrapper.style.top = "0";
-  wrapper.style.width = "720px";
-  wrapper.style.padding = "40px";
-  wrapper.style.background = "#f7f3eb";
-  wrapper.style.color = "#20332b";
-  wrapper.style.fontFamily = "Noto Sans TC, PingFang TC, Microsoft JhengHei, sans-serif";
-  wrapper.style.fontSize = "14px";
-  wrapper.style.lineHeight = "1.8";
-  wrapper.style.whiteSpace = "pre-wrap";
-  wrapper.textContent = text;
-  document.body.appendChild(wrapper);
+  const pageWidth = 1190;
+  const pageHeight = 1684;
+  const margin = 80;
+  const fontSize = 28;
+  const lineHeight = 52;
+  const canvas = document.createElement("canvas");
+  canvas.width = pageWidth;
+  canvas.height = pageHeight;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("無法建立 PDF 預覽畫布，請改用其他瀏覽器重試。");
 
-  try {
-    await pdf.html(wrapper, {
-      x: 40,
-      y: 40,
-      width: 515,
-      windowWidth: 800,
-      margin: [40, 40, 40, 40],
-      autoPaging: "text",
-      html2canvas: { scale: 1.4, backgroundColor: "#f7f3eb" },
+  context.font = `${fontSize}px "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif`;
+  context.textBaseline = "top";
+  const lines = wrapPdfText(text, context, pageWidth - margin * 2);
+  const linesPerPage = Math.max(1, Math.floor((pageHeight - margin * 2) / lineHeight));
+  const pageCount = Math.max(1, Math.ceil(lines.length / linesPerPage));
+
+  for (let pageIndex = 0; pageIndex < pageCount; pageIndex += 1) {
+    context.fillStyle = "#f7f3eb";
+    context.fillRect(0, 0, pageWidth, pageHeight);
+    context.fillStyle = "#20332b";
+    const pageLines = lines.slice(pageIndex * linesPerPage, (pageIndex + 1) * linesPerPage);
+    pageLines.forEach((line, lineIndex) => {
+      context.fillText(line, margin, margin + lineIndex * lineHeight);
     });
-  } finally {
-    wrapper.remove();
+
+    if (pageIndex > 0) pdf.addPage();
+    pdf.addImage(canvas.toDataURL("image/jpeg", 0.94), "JPEG", 0, 0, 595.28, 841.89, undefined, "FAST");
   }
   pdf.save(buildBrandedFileName(fileName, "local", "pdf"));
 }
