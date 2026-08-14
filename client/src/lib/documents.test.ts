@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 import * as XLSX from "xlsx";
-import { parseDocument } from "./documents";
+import { buildBrandedFileName, parseDocument } from "./documents";
 
 describe("parseDocument", () => {
   it("reads plain text locally", async () => {
@@ -29,3 +29,12 @@ describe("parseDocument", () => {
   });
 });
 
+describe("buildBrandedFileName", () => {
+  it("adds the 無意識 brand prefix to local exports", () => {
+    expect(buildBrandedFileName("customers.xlsx", "local", "xlsx")).toBe("無意識-去識別化工作站-customers-local.xlsx");
+  });
+
+  it("does not duplicate the brand prefix", () => {
+    expect(buildBrandedFileName("無意識-去識別化工作站-customers", "local", "txt")).toBe("無意識-去識別化工作站-customers-local.txt");
+  });
+});

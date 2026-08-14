@@ -185,12 +185,20 @@ function safeBaseName(fileName: string) {
   return fileName.replace(/\.[^.]+$/, "").replace(/[^a-zA-Z0-9\u4e00-\u9fff_-]+/g, "-") || "deidentified";
 }
 
+const BRAND_FILE_PREFIX = "無意識-去識別化工作站";
+
+export function buildBrandedFileName(fileName: string, suffix: string, extension: string) {
+  const base = safeBaseName(fileName);
+  const brandedBase = base.startsWith(`${BRAND_FILE_PREFIX}-`) ? base : `${BRAND_FILE_PREFIX}-${base}`;
+  return `${brandedBase}-${suffix}.${extension}`;
+}
+
 export function downloadTextResult(text: string, fileName: string) {
   const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `${safeBaseName(fileName)}-local.txt`;
+  link.download = buildBrandedFileName(fileName, "local", "txt");
   link.click();
   URL.revokeObjectURL(url);
 }
@@ -202,7 +210,7 @@ export async function exportSpreadsheet(text: string, fileName: string) {
   sheet["!cols"] = rows[0]?.map(() => ({ wch: 24 })) ?? [];
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, sheet, "去識別化結果");
-  XLSX.writeFile(workbook, `${safeBaseName(fileName)}-local.xlsx`);
+  XLSX.writeFile(workbook, buildBrandedFileName(fileName, "local", "xlsx"));
 }
 
 export async function exportWord(text: string, fileName: string) {
@@ -213,7 +221,7 @@ export async function exportWord(text: string, fileName: string) {
   const url = URL.createObjectURL(blob);
   const link = window.document.createElement("a");
   link.href = url;
-  link.download = `${safeBaseName(fileName)}-local.docx`;
+  link.download = buildBrandedFileName(fileName, "local", "docx");
   link.click();
   URL.revokeObjectURL(url);
 }
@@ -249,5 +257,5 @@ export async function exportPdf(text: string, fileName: string) {
   } finally {
     wrapper.remove();
   }
-  pdf.save(`${safeBaseName(fileName)}-local.pdf`);
+  pdf.save(buildBrandedFileName(fileName, "local", "pdf"));
 }

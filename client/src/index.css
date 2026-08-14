@@ -149,6 +149,17 @@
   .clear-scope-note svg { flex: 0 0 auto; color: var(--amber); }
   .clear-workspace-button { color: var(--ink-soft); }
   .clear-workspace-button:hover { color: var(--ink); }
+  .clear-confirm-dialog { background: var(--paper); border: 1px solid rgba(32, 51, 43, 0.18); border-radius: 2px; color: var(--ink); box-shadow: 0 24px 70px rgba(20, 34, 28, 0.24); }
+  .clear-confirm-dialog__kicker { color: var(--amber-deep); font: 10px "IBM Plex Mono", monospace; letter-spacing: 0.16em; }
+  .clear-confirm-dialog [data-slot="alert-dialog-title"] { margin-top: 4px; font-family: "DM Sans", "Noto Sans TC", sans-serif; font-size: 22px; letter-spacing: -0.03em; }
+  .clear-confirm-dialog [data-slot="alert-dialog-description"] { color: rgba(32, 51, 43, 0.68); font: 13px/1.7 "Noto Sans TC", sans-serif; }
+  .clear-confirm-dialog__scope { display: grid; gap: 7px; padding: 14px 16px; border: 1px solid rgba(32, 51, 43, 0.13); background: rgba(255, 252, 246, 0.72); color: rgba(32, 51, 43, 0.68); font: 12px/1.5 "Noto Sans TC", sans-serif; }
+  .clear-confirm-dialog__scope strong { color: var(--ink); font: 10px "IBM Plex Mono", monospace; letter-spacing: 0.12em; text-transform: uppercase; }
+  .clear-confirm-dialog__scope span::before { content: "—"; margin-right: 8px; color: var(--amber-deep); }
+  .clear-confirm-dialog__footer { margin-top: 4px; }
+  .clear-confirm-dialog__cancel { color: var(--ink-soft); border-color: rgba(32, 51, 43, 0.22); }
+  .clear-confirm-dialog__confirm { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .clear-confirm-dialog__confirm:hover { background: var(--amber-deep); border-color: var(--amber-deep); }
   .parse-error, .parse-warning { display: flex; align-items: flex-start; gap: 8px; padding: 9px 18px; font-size: 10px; line-height: 1.6; }
   .parse-error { background: rgba(163, 76, 56, 0.1); color: #8b493c; }
   .parse-warning { background: rgba(200, 148, 62, 0.1); color: #85652e; }
@@ -309,6 +320,8 @@
     .input-zone textarea { padding: 16px; }
     .editor-card__footer { padding: 10px 13px; font-size: 9px; }
     .clear-scope-note { padding: 0 13px 11px; font-size: 9px; }
+    .clear-confirm-dialog { padding: 20px; }
+    .clear-confirm-dialog__footer { flex-direction: column-reverse; }
     .rule-card { min-height: 105px; padding: 11px 10px; }
     .result-card__header { flex-direction: column; }
     .result-card__actions { justify-content: flex-start; }

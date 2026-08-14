@@ -31,6 +31,16 @@ import {
 import { toast } from "sonner";
 import DiffView from "@/components/DiffView";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   downloadTextResult,
   exportPdf,
   exportSpreadsheet,
@@ -149,6 +159,7 @@ export default function Home() {
   const [isDragging, setIsDragging] = useState(false);
   const [copied, setCopied] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const analysis = useMemo(
@@ -228,6 +239,7 @@ export default function Home() {
   };
 
   const clearWorkspace = () => {
+    setClearConfirmOpen(false);
     setInput("");
     setResult("");
     setFileName("");
@@ -316,7 +328,7 @@ export default function Home() {
               <div className="editor-card__title"><span className="section-index">A</span><span>原始資料</span></div>
               <div className="editor-card__tools">
                 <button className="text-button" onClick={loadExample}><Sparkles size={14} /> 載入範例</button>
-                <button className="text-button text-button--quiet clear-workspace-button" onClick={clearWorkspace} title="清除原文、結果、檔案資訊、OCR 狀態與自訂關鍵字"><Trash2 size={14} /> 清除工作區</button>
+                <button className="text-button text-button--quiet clear-workspace-button" onClick={() => setClearConfirmOpen(true)} title="清除原文、結果、檔案資訊、OCR 狀態與自訂關鍵字"><Trash2 size={14} /> 清除工作區</button>
               </div>
             </div>
             <div
@@ -412,6 +424,27 @@ export default function Home() {
           <section className="tip-panel"><div className="tip-panel__mark">/ / /</div><p>去識別化是降低風險，不是取代人工判斷。匯出前請檢查結果，確認沒有遺漏需要遮蔽的內容。</p><span>使用提醒 · 0001</span></section>
         </aside>
       </main>
+      <AlertDialog open={clearConfirmOpen} onOpenChange={setClearConfirmOpen}>
+        <AlertDialogContent className="clear-confirm-dialog">
+          <AlertDialogHeader>
+            <span className="clear-confirm-dialog__kicker">WORKSPACE / CONFIRM</span>
+            <AlertDialogTitle>確定要清除目前工作區？</AlertDialogTitle>
+            <AlertDialogDescription>
+              這項操作會移除目前工作區記憶體中的資料，且無法復原。已下載到裝置的結果檔案不會受到影響。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="clear-confirm-dialog__scope">
+            <strong>將被清除</strong>
+            <span>原文與去識別化結果</span>
+            <span>檔案資訊與 PDF OCR 狀態</span>
+            <span>自訂關鍵字與差異檢視狀態</span>
+          </div>
+          <AlertDialogFooter className="clear-confirm-dialog__footer">
+            <AlertDialogCancel className="clear-confirm-dialog__cancel">保留目前資料</AlertDialogCancel>
+            <AlertDialogAction className="clear-confirm-dialog__confirm">清除工作區</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <footer className="site-footer"><span>無意識 · 去識別化工作站</span><span>本機處理 · 無雲端副本 · 可檢查的替換</span><span>v0.1 / 2026</span></footer>
     </div>
   );
