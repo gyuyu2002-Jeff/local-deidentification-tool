@@ -13,3 +13,5 @@ DOM 檢查確認文件上傳欄位為第一個 `<input type="file">`（accept �
 曾暫時將文件 input 設為可見，但自動化上傳仍回報找不到欄位；頁面本身保持正常，欄位顯示 `Choose File / No file chosen`。因此目前需要改以程式化單元測試、靜態分析與直接檢查匯出實作來定位問題。
 
 修正方式是在 `package.json` 加入 `html2canvas@^1.4.1`，並更新 lockfile。`pnpm run build:pages` 已成功產生 `html2canvas.esm-*.js` chunk，表示 GitHub Pages workflow 會將所需模組一併發布；`pnpm check` 與 14 項既有測試也已通過。
+
+修正後 commit `300ce742` 的 GitHub Pages workflow 已成功完成。線上首頁 HTTP 200，主 bundle 為 `index-wVXcphtV.js`，公開的 `html2canvas.esm-B0tyYwQk.js` chunk 回應 HTTP 200；因此 jsPDF `html()` 所需的動態模組已確實部署到 Pages。
