@@ -8,10 +8,15 @@ import {
   ChevronRight,
   Clipboard,
   FileCheck2,
+  FileDiff,
+  FileOutput,
+  FileSpreadsheet,
   FileText,
+  FileType2,
   Fingerprint,
   FolderOpen,
   Info,
+  LoaderCircle,
   LockKeyhole,
   Menu,
   RotateCcw,
@@ -23,6 +28,15 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import DiffView from "@/components/DiffView";
+import {
+  downloadTextResult,
+  exportPdf,
+  exportSpreadsheet,
+  exportWord,
+  parseDocument,
+  type ParsedDocument,
+} from "@/lib/documents";
 import {
   countCharacters,
   DEFAULT_RULES,
@@ -119,6 +133,10 @@ export default function Home() {
   const [customTerms, setCustomTerms] = useState<string[]>([]);
   const [customInput, setCustomInput] = useState("");
   const [fileName, setFileName] = useState("");
+  const [parsedDocument, setParsedDocument] = useState<ParsedDocument | null>(null);
+  const [isParsing, setIsParsing] = useState(false);
+  const [parseError, setParseError] = useState("");
+  const [showDiff, setShowDiff] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [copied, setCopied] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -140,26 +158,31 @@ export default function Home() {
     }
     const next = deidentifyText(input, enabledRules, customTerms);
     setResult(next.text);
+    setShowDiff(true);
     setActiveStep("result");
     toast.success(`已完成 ${next.total} 處替換，原文仍只存在本機。`);
   };
 
-  const handleFile = (file?: File) => {
+  const handleFile = async (file?: File) => {
     if (!file) return;
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("目前限制單一檔案不超過 10 MB。");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      setInput(String(reader.result ?? ""));
+    setIsParsing(true);
+    setParseError("");
+    try {
+      const parsed = await parseDocument(file);
+      setInput(parsed.text);
       setFileName(file.name);
+      setParsedDocument(parsed);
       setResult("");
+      setShowDiff(false);
       setActiveStep("rules");
-      toast.success(`已在本機讀取 ${file.name}。`);
-    };
-    reader.onerror = () => toast.error("檔案讀取失敗，請改用文字貼上或重新選取。");
-    reader.readAsText(file);
+      toast.success(`已在本機解析 ${file.name}。`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "檔案解析失敗，請確認檔案格式。";
+      setParseError(message);
+      toast.error(message);
+    } finally {
+      setIsParsing(false);
+    }
   };
 
   const toggleRule = (id: RuleId) => {
@@ -179,6 +202,9 @@ export default function Home() {
     setInput("");
     setResult("");
     setFileName("");
+    setParsedDocument(null);
+    setParseError("");
+    setShowDiff(false);
     setCustomInput("");
     setCustomTerms([]);
     setActiveStep("source");
@@ -196,20 +222,26 @@ export default function Home() {
 
   const downloadResult = () => {
     if (!result) return;
-    const blob = new Blob([result], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${fileName.replace(/\.[^.]+$/, "") || "deidentified"}-local.txt`;
-    link.click();
-    URL.revokeObjectURL(url);
-    toast.success("檔案已由本機產生並準備下載。");
+    const fileType = parsedDocument?.fileType ?? "text";
+    const exportTask = fileType === "xlsx"
+      ? exportSpreadsheet(result, fileName)
+      : fileType === "docx"
+        ? exportWord(result, fileName)
+        : fileType === "pdf"
+          ? exportPdf(result, fileName)
+          : downloadTextResult(result, fileName);
+    Promise.resolve(exportTask)
+      .then(() => toast.success("結果已由本機產生並準備下載。"))
+      .catch(() => toast.error("本機匯出失敗，請確認瀏覽器允許下載後再試一次。"));
   };
 
   const loadExample = () => {
     setInput(EXAMPLE_TEXT);
     setFileName("");
+    setParsedDocument(null);
+    setParseError("");
     setResult("");
+    setShowDiff(false);
     setActiveStep("rules");
     toast.success("已載入範例資料；這段內容只用於展示介面。");
   };
@@ -272,16 +304,18 @@ export default function Home() {
                 <div className="input-zone__empty">
                   <div className="empty-icon"><FileText size={21} /></div>
                   <strong>尚未放入資料</strong>
-                  <span>支援貼上文字，或拖曳 TXT / CSV / JSON 檔案到此處</span>
-                  <button className="upload-button" onClick={() => fileInputRef.current?.click()}><Upload size={15} /> 選取檔案</button>
-                  <input ref={fileInputRef} type="file" accept=".txt,.csv,.json,text/plain,text/csv,application/json" onChange={(event) => handleFile(event.target.files?.[0])} hidden />
+                  <span>支援 TXT、CSV、JSON、Excel、Word 與 PDF</span>
+                  <button className="upload-button" onClick={() => fileInputRef.current?.click()} disabled={isParsing}>{isParsing ? <LoaderCircle className="spin" size={15} /> : <Upload size={15} />} {isParsing ? "本機解析中" : "選取檔案"}</button>
+                  <input ref={fileInputRef} type="file" accept=".txt,.csv,.json,.xlsx,.xls,.docx,.pdf,text/plain,text/csv,application/json,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(event) => handleFile(event.target.files?.[0])} hidden />
                 </div>
               )}
             </div>
             <div className="editor-card__footer">
-              <span>{fileName ? <><FolderOpen size={14} /> {fileName}</> : <><LockKeyhole size={14} /> 只在瀏覽器記憶體中處理</>}</span>
+              <span>{fileName ? <><FolderOpen size={14} /> {fileName} {parsedDocument?.fileType === "xlsx" ? <FileSpreadsheet size={13} /> : parsedDocument?.fileType === "docx" ? <FileType2 size={13} /> : parsedDocument?.fileType === "pdf" ? <FileOutput size={13} /> : null}</> : <><LockKeyhole size={14} /> 只在瀏覽器記憶體中處理</>}</span>
               <span>{countCharacters(input)} 字元</span>
             </div>
+            {parseError && <div className="parse-error"><Info size={14} /> {parseError}</div>}
+            {parsedDocument?.warnings.map((warning) => <div className="parse-warning" key={warning}><Info size={14} /> {warning}</div>)}
           </div>
 
           <div className="rules-section rise-in" style={{ animationDelay: "140ms" }}>
@@ -311,11 +345,12 @@ export default function Home() {
 
           {result && (
             <div className="result-card rise-in">
-              <div className="result-card__header"><div className="editor-card__title"><span className="section-index section-index--amber">C</span><span>處理結果</span><span className="done-label"><CheckCircle2 size={14} /> 已完成</span></div><div className="result-card__actions"><button className="text-button" onClick={copyResult}>{copied ? <Check size={14} /> : <Clipboard size={14} />} {copied ? "已複製" : "複製結果"}</button><button className="download-button" onClick={downloadResult}><ArrowDownToLine size={15} /> 下載 TXT</button></div></div>
+              <div className="result-card__header"><div className="editor-card__title"><span className="section-index section-index--amber">C</span><span>處理結果</span><span className="done-label"><CheckCircle2 size={14} /> 已完成</span></div><div className="result-card__actions"><button className="text-button" onClick={copyResult}>{copied ? <Check size={14} /> : <Clipboard size={14} />} {copied ? "已複製" : "複製結果"}</button><button className="text-button" onClick={() => setShowDiff((open) => !open)}><FileDiff size={14} /> {showDiff ? "隱藏差異" : "查看差異"}</button><button className="download-button" onClick={downloadResult}><ArrowDownToLine size={15} /> 下載 {parsedDocument?.fileType === "xlsx" ? "XLSX" : parsedDocument?.fileType === "docx" ? "DOCX" : parsedDocument?.fileType === "pdf" ? "PDF" : "TXT"}</button></div></div>
               <pre className="result-preview">{result}</pre>
               <div className="result-summary"><span><strong>{resultStats.total}</strong> 處內容已替換</span><span>輸入 {countCharacters(input)} 字元</span><span>輸出 {countCharacters(result)} 字元</span></div>
             </div>
           )}
+          {result && showDiff && <DiffView original={input} revised={result} onClose={() => setShowDiff(false)} />}
         </section>
 
         <aside className="status-column">
@@ -334,4 +369,3 @@ export default function Home() {
     </div>
   );
 }
-

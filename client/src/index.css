@@ -142,6 +142,11 @@
   .editor-card__footer { display: flex; justify-content: space-between; align-items: center; padding: 11px 18px; color: rgba(32, 51, 43, 0.5); font: 10px "IBM Plex Mono", monospace; }
   .editor-card__footer span:first-child { display: flex; align-items: center; gap: 7px; }
   .editor-card__footer svg { color: var(--amber); }
+  .parse-error, .parse-warning { display: flex; align-items: flex-start; gap: 8px; padding: 9px 18px; font-size: 10px; line-height: 1.6; }
+  .parse-error { background: rgba(163, 76, 56, 0.1); color: #8b493c; }
+  .parse-warning { background: rgba(200, 148, 62, 0.1); color: #85652e; }
+  .parse-error svg, .parse-warning svg { flex: 0 0 auto; margin-top: 2px; }
+  .spin { animation: spin 900ms linear infinite; }
 
   .rules-section { margin-top: 45px; }
   .section-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 17px; }
@@ -185,6 +190,27 @@
   .result-preview { max-height: 300px; overflow: auto; margin: 0; padding: 22px; white-space: pre-wrap; word-break: break-word; background: rgba(248, 246, 239, 0.74); color: var(--ink); font: 12px/1.9 "IBM Plex Mono", "Noto Sans TC", monospace; }
   .result-summary { display: flex; flex-wrap: wrap; gap: 18px; padding: 11px 18px; color: var(--ink-soft); font: 10px "IBM Plex Mono", monospace; }
   .result-summary strong { color: var(--amber); font-size: 14px; }
+  .diff-card { margin-top: 18px; border: 1px solid rgba(200, 148, 62, 0.54); background: rgba(255, 253, 248, 0.74); box-shadow: 0 16px 45px rgba(58, 69, 56, 0.05); }
+  .diff-card__toolbar { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+  .diff-card__title { display: flex; align-items: center; gap: 9px; font-size: 12px; font-weight: 700; }
+  .diff-card__meta { display: inline-flex; align-items: center; gap: 5px; margin-left: 5px; color: var(--ink-soft); font: 10px "IBM Plex Mono", monospace; font-weight: 400; }
+  .diff-card__legend { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; padding: 10px 18px; color: var(--ink-soft); font-size: 10px; }
+  .diff-card__legend > span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend-swatch { width: 10px; height: 10px; display: inline-block; }
+  .legend-swatch--removed { background: rgba(184, 102, 74, 0.27); border-bottom: 1px solid #a85e4c; }
+  .legend-swatch--added { background: rgba(200, 148, 62, 0.34); border-bottom: 1px solid var(--amber); }
+  .diff-grid { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--line); }
+  .diff-pane { min-width: 0; }
+  .diff-pane + .diff-pane { border-left: 1px solid var(--line); }
+  .diff-pane__heading { display: flex; align-items: center; gap: 8px; padding: 11px 15px; color: var(--ink); border-bottom: 1px solid var(--line); font-size: 11px; font-weight: 700; }
+  .diff-pane__heading small { color: var(--ink-soft); font: 9px "IBM Plex Mono", monospace; font-weight: 400; }
+  .diff-pane__marker { width: 7px; height: 7px; display: inline-block; border-radius: 50%; }
+  .diff-pane__marker--original { background: #a85e4c; }
+  .diff-pane__marker--revised { background: var(--amber); }
+  .diff-pane__content { min-height: 150px; max-height: 340px; overflow: auto; margin: 0; padding: 17px 15px; white-space: pre-wrap; word-break: break-word; color: var(--ink); font: 11px/1.85 "IBM Plex Mono", "Noto Sans TC", monospace; }
+  .diff-token { padding: 2px 1px; border-radius: 2px; }
+  .diff-token--removed { background: rgba(184, 102, 74, 0.2); color: #884536; text-decoration: line-through; text-decoration-thickness: 1px; }
+  .diff-token--added { background: rgba(200, 148, 62, 0.28); color: #6f5121; }
 
   .status-column { padding-top: 45px; }
   .privacy-panel { padding: 20px; background: var(--ink); color: var(--paper); }
@@ -212,6 +238,7 @@
   .rise-in { animation: rise-in 500ms var(--ease-out) both; }
   @keyframes rise-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes pop-in { from { opacity: 0; transform: translateY(-5px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  @keyframes spin { to { transform: rotate(360deg); } }
   @media (prefers-reduced-motion: reduce) { .rise-in, .menu-popover { animation: none; } *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; } }
 
   @media (max-width: 1050px) {
@@ -256,5 +283,8 @@
     .rule-card { min-height: 105px; padding: 11px 10px; }
     .result-card__header { flex-direction: column; }
     .result-card__actions { justify-content: flex-start; }
+    .diff-card__toolbar { align-items: flex-start; flex-direction: column; }
+    .diff-grid { display: block; }
+    .diff-pane + .diff-pane { border-left: 0; border-top: 1px solid var(--line); }
   }
 }
