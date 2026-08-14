@@ -1,0 +1,22 @@
+{
+  "name": "流動幻彩｜無意識－去識別化工作站",
+  "short_name": "流動幻彩",
+  "description": "在瀏覽器本機端完成去識別化，原始資料不離開裝置。",
+  "lang": "zh-Hant",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f3eb",
+  "theme_color": "#20332b",
+  "icons": [
+    {
+      "src": "/manus-storage/fluid-iridescent-favicon-192_aaa5c9ed.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/manus-storage/fluid-iridescent-favicon-512_c18ead06.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
