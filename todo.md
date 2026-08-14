@@ -75,3 +75,9 @@
 - [x] 設計並製作 1200×630 的社群分享預覽圖片，維持簡約商務構圖與品牌幻彩焦點。
 - [x] 將網站標題更新為「流動幻彩」，並整合 favicon、Apple Touch Icon 與 Open Graph／Twitter Card metadata。
 - [x] 完成多尺寸視覺檢查、型別檢查、正式建置並保存版本。
+
+## GitHub 專案上傳
+
+- [ ] 確認目前登入的 GitHub 帳號與專案既有遠端設定。
+- [ ] 整理並提交最新「流動幻彩」品牌資產與網站程式碼。
+- [ ] 推送至正確的 GitHub repository，並驗證遠端最新 commit 與檔案內容。
