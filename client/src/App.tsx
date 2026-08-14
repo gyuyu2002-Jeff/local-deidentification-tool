@@ -32,7 +32,7 @@ function App() {
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
         <TooltipProvider>
-          <Toaster />
+          <Toaster position="bottom-right" />
           <Router />
         </TooltipProvider>
       </ThemeProvider>

@@ -41,6 +41,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   downloadTextResult,
   exportPdf,
   exportSpreadsheet,
@@ -163,6 +172,8 @@ export default function Home() {
   const [copied, setCopied] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
+  const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false);
+  const [isPdfExporting, setIsPdfExporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dictionaryInputRef = useRef<HTMLInputElement>(null);
   const parseControllerRef = useRef<AbortController | null>(null);
@@ -270,6 +281,8 @@ export default function Home() {
     setParseError("");
     setParseProgress(null);
     setShowDiff(false);
+    setPdfPreviewOpen(false);
+    setIsPdfExporting(false);
     setCustomInput("");
     setCustomTerms([]);
     setActiveStep("source");
@@ -309,16 +322,34 @@ export default function Home() {
   const downloadResult = () => {
     if (!result) return;
     const fileType = parsedDocument?.fileType ?? "text";
+    if (fileType === "pdf") {
+      setPdfPreviewOpen(true);
+      return;
+    }
     const exportTask = fileType === "xlsx"
       ? exportSpreadsheet(result, fileName)
       : fileType === "docx"
         ? exportWord(result, fileName)
-        : fileType === "pdf"
-          ? exportPdf(result, fileName)
-          : downloadTextResult(result, fileName);
+        : downloadTextResult(result, fileName);
     Promise.resolve(exportTask)
       .then(() => toast.success("結果已由本機產生並準備下載。"))
       .catch(() => toast.error("本機匯出失敗，請確認瀏覽器允許下載後再試一次。"));
+  };
+
+  const confirmPdfDownload = async () => {
+    if (!result || isPdfExporting) return;
+    setIsPdfExporting(true);
+    try {
+      await exportPdf(result, fileName);
+      setPdfPreviewOpen(false);
+      toast.success("PDF 已成功下載。", {
+        description: "檔案已由本機產生，請至瀏覽器下載位置查看。",
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "PDF 匯出失敗，請確認瀏覽器允許下載後再試一次。");
+    } finally {
+      setIsPdfExporting(false);
+    }
   };
 
   const loadExample = () => {
@@ -441,12 +472,12 @@ export default function Home() {
               <div className="custom-rule__input"><input value={customInput} onChange={(event) => setCustomInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") addCustomTerm(); }} placeholder="輸入後按 Enter，可用逗號分隔" /><button onClick={addCustomTerm} aria-label="新增自訂關鍵字">新增</button></div>
               {customTerms.length > 0 && <div className="term-list">{customTerms.map((term) => <span key={term}>{term}<button onClick={() => setCustomTerms((current) => current.filter((item) => item !== term))} aria-label={`移除 ${term}`}><X size={12} /></button></span>)}</div>}
             </div>
-            <div className="action-row"><span className="action-row__hint"><ScanLine size={16} /> {input ? "規則會在本機即時比對，執行前可隨時調整。" : "放入資料後即可開始設定規則。"}</span><button className="primary-button" onClick={processText} disabled={!input.trim()}><FileCheck2 size={17} /> 執行去識別化 <ChevronRight size={16} /></button></div>
+            <div className="action-row"><span className="action-row__hint"><ScanLine size={16} /> {input ? "規則會在本機即時比對，執行前可隨時調整。" : "放入資料後即可開始設定規則。"}</span><span className="action-row__seal"><LockKeyhole size={13} /> LOCAL ONLY · 執行前確認</span><button className="primary-button" onClick={processText} disabled={!input.trim()}><FileCheck2 size={17} /> 執行去識別化 <ChevronRight size={16} /></button></div>
           </div>
 
           {result && (
             <div className="result-card rise-in">
-              <div className="result-card__header"><div className="editor-card__title"><span className="section-index section-index--amber">C</span><span>處理結果</span><span className="done-label"><CheckCircle2 size={14} /> 已完成</span></div><div className="result-card__actions"><button className="text-button" onClick={copyResult}>{copied ? <Check size={14} /> : <Clipboard size={14} />} {copied ? "已複製" : "複製結果"}</button><button className="text-button" onClick={() => setShowDiff((open) => !open)}><FileDiff size={14} /> {showDiff ? "隱藏差異" : "查看差異"}</button><button className="download-button" onClick={downloadResult}><ArrowDownToLine size={15} /> 下載 {parsedDocument?.fileType === "xlsx" ? "XLSX" : parsedDocument?.fileType === "docx" ? "DOCX" : parsedDocument?.fileType === "pdf" ? "PDF" : "TXT"}</button></div></div>
+              <div className="result-card__header"><div className="editor-card__title"><span className="section-index section-index--amber">C</span><span>處理結果</span><span className="done-label"><CheckCircle2 size={14} /> 已完成</span></div><div className="result-card__actions"><span className="result-seal"><LockKeyhole size={12} /> LOCAL ONLY · 匯出前可預覽</span><button className="text-button" onClick={copyResult}>{copied ? <Check size={14} /> : <Clipboard size={14} />} {copied ? "已複製" : "複製結果"}</button><button className="text-button" onClick={() => setShowDiff((open) => !open)}><FileDiff size={14} /> {showDiff ? "隱藏差異" : "查看差異"}</button><button className="download-button" onClick={downloadResult} aria-haspopup={parsedDocument?.fileType === "pdf" ? "dialog" : undefined}><ArrowDownToLine size={15} /> {parsedDocument?.fileType === "pdf" ? "預覽並下載 PDF" : `下載 ${parsedDocument?.fileType === "xlsx" ? "XLSX" : parsedDocument?.fileType === "docx" ? "DOCX" : "TXT"}`}</button></div></div>
               <pre className="result-preview">{result}</pre>
               <div className="result-summary"><span><strong>{resultStats.total}</strong> 處內容已替換</span><span>輸入 {countCharacters(input)} 字元</span><span>輸出 {countCharacters(result)} 字元</span></div>
             </div>
@@ -488,6 +519,22 @@ export default function Home() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <Dialog open={pdfPreviewOpen} onOpenChange={(open) => { if (!isPdfExporting) setPdfPreviewOpen(open); }}>
+        <DialogContent className="pdf-preview-dialog" aria-busy={isPdfExporting}>
+          <DialogHeader className="pdf-preview-dialog__header">
+            <span className="pdf-preview-dialog__kicker">PDF / LOCAL PREVIEW</span>
+            <DialogTitle>下載前檢查去識別化結果</DialogTitle>
+            <DialogDescription>以下內容將以目前的去識別化結果產生 PDF。請先確認敏感資訊已被替換，再開始下載。</DialogDescription>
+          </DialogHeader>
+          <div className="pdf-preview-dialog__meta"><span><FileOutput size={14} /> {fileName || "文字工作區"}</span><span>{countCharacters(result)} 字元 · {resultStats.total} 處替換</span></div>
+          <pre className="pdf-preview-dialog__document" aria-label="去識別化 PDF 內容預覽">{result}</pre>
+          {isPdfExporting && <div className="pdf-preview-dialog__status" role="status" aria-live="polite"><LoaderCircle className="spin" size={16} /><span><strong>正在產生 PDF…</strong><small>檔案完全在瀏覽器本機處理，請稍候。</small></span></div>}
+          <DialogFooter className="pdf-preview-dialog__footer">
+            <DialogClose asChild><button className="pdf-preview-dialog__back" disabled={isPdfExporting}>返回結果</button></DialogClose>
+            <button className="download-button pdf-preview-dialog__download" onClick={confirmPdfDownload} disabled={isPdfExporting}>{isPdfExporting ? <LoaderCircle className="spin" size={15} /> : <ArrowDownToLine size={15} />} {isPdfExporting ? "PDF 處理中…" : "確認並下載 PDF"}</button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <footer className="site-footer"><span className="site-footer__brand">無意識 · 去識別化工作站</span><span>本機處理 · 無雲端副本 · 可檢查的替換</span><span>v0.1 / 2026</span></footer>
     </div>
   );
