@@ -33,5 +33,22 @@ describe("deidentifyText", () => {
     expect(output.counts["custom:Project Atlas"]).toBe(2);
     expect(output.total).toBe(2);
   });
-});
 
+  it("replaces Taiwan addresses before their region names", () => {
+    const output = deidentifyText("寄送地址：桃園市桃園區中正路100號5樓", ["address", "region"], []);
+
+    expect(output.text).toBe("寄送地址：[ADDRESS]");
+    expect(output.counts.address).toBe(1);
+    expect(output.counts.region).toBe(0);
+    expect(output.total).toBe(1);
+  });
+
+  it("replaces place names and regional descriptors independently", () => {
+    const output = deidentifyText("會議地點：台北101；服務區域：北部地區", ["placeName", "region"], []);
+
+    expect(output.text).toBe("[PLACE_NAME]；服務區域：[REGION]");
+    expect(output.counts.placeName).toBe(1);
+    expect(output.counts.region).toBe(1);
+    expect(output.total).toBe(2);
+  });
+});

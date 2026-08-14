@@ -328,7 +328,7 @@ export default function Home() {
                 const enabled = enabledRules.includes(rule.id);
                 return (
                   <button className={`rule-card ${enabled ? "rule-card--enabled" : ""}`} key={rule.id} onClick={() => toggleRule(rule.id)} aria-pressed={enabled}>
-                    <span className="rule-card__icon">{rule.id === "email" ? "@" : rule.id === "phone" ? "☎" : rule.id === "taiwanId" ? "ID" : rule.id === "date" ? "D" : "IP"}</span>
+                    <span className="rule-card__icon">{rule.id === "email" ? "@" : rule.id === "phone" ? "☎" : rule.id === "taiwanId" ? "ID" : rule.id === "date" ? "D" : rule.id === "ip" ? "IP" : rule.id === "address" ? "⌂" : rule.id === "placeName" ? "地" : "區"}</span>
                     <span className="rule-card__text"><strong>{rule.label}</strong><small>{rule.detail}</small></span>
                     <span className="rule-card__check">{enabled ? <Check size={13} /> : <span />}</span>
                   </button>

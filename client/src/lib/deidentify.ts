@@ -1,6 +1,6 @@
 /* Design philosophy: quiet archival utility — make every transformation explicit, local, and auditable. */
 
-export type RuleId = "email" | "phone" | "taiwanId" | "date" | "ip";
+export type RuleId = "email" | "phone" | "taiwanId" | "date" | "ip" | "address" | "placeName" | "region";
 
 export type DeidentifyRule = {
   id: RuleId;
@@ -46,6 +46,24 @@ export const DEFAULT_RULES: DeidentifyRule[] = [
     detail: "辨識 IPv4 位址格式",
     replacement: "[IP_ADDRESS]",
   },
+  {
+    id: "address",
+    label: "地址",
+    detail: "辨識臺灣縣市、行政區與道路門牌",
+    replacement: "[ADDRESS]",
+  },
+  {
+    id: "placeName",
+    label: "地名",
+    detail: "辨識常見地點與地名欄位內容",
+    replacement: "[PLACE_NAME]",
+  },
+  {
+    id: "region",
+    label: "區域",
+    detail: "辨識縣市、行政區與北中南東區域",
+    replacement: "[REGION]",
+  },
 ];
 
 const PATTERNS: Record<RuleId, RegExp> = {
@@ -54,6 +72,9 @@ const PATTERNS: Record<RuleId, RegExp> = {
   taiwanId: /\b[A-Z][12]\d{8}\b/gi,
   date: /\b(?:19|20)\d{2}[./-]\d{1,2}[./-]\d{1,2}\b/g,
   ip: /\b(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)\b/g,
+  address: /(?:\d{3,5}[-\s]?)?(?:基隆|新北|桃園|新竹|苗栗|臺中|台中|彰化|南投|雲林|嘉義|臺南|台南|高雄|屏東|宜蘭|花蓮|臺東|台東|澎湖|金門|連江|臺北|台北)(?:縣|市)[\u4e00-\u9fff]{1,6}(?:區|鄉|鎮|市)[\u4e00-\u9fff]{1,12}(?:路|街|大道)(?:[一二三四五六七八九十百]+段)?\d{1,5}(?:巷\d{1,5})?(?:弄\d{1,5})?號(?:\d{1,4}樓)?/g,
+  placeName: /(?:地點|地名|所在位置|目的地|會議地點|工作地點|現場|分店|門市)\s*[:：]\s*[^\n,，。；;]{2,30}|(?:台北101|臺北101|桃園國際機場|桃園機場|臺北車站|台北車站|中正紀念堂|國立故宮博物院|故宮博物院|南港展覽館|信義商圈|西門町|九份老街|日月潭|阿里山|太魯閣|墾丁|高雄巨蛋|台中國家歌劇院|台中歌劇院|六合夜市|逢甲夜市)/gi,
+  region: /(?:臺北市|台北市|新北市|桃園市|臺中市|台中市|臺南市|台南市|高雄市|基隆市|新竹市|嘉義市|新竹縣|苗栗縣|彰化縣|南投縣|雲林縣|嘉義縣|屏東縣|宜蘭縣|花蓮縣|臺東縣|台東縣|澎湖縣|金門縣|連江縣|北部地區|中部地區|南部地區|東部地區|離島地區|北部|中部|南部|東部)/g,
 };
 
 function escapeRegExp(value: string) {
@@ -104,4 +125,3 @@ export function deidentifyText(
 export function countCharacters(value: string) {
   return value.length.toLocaleString("zh-TW");
 }
-
