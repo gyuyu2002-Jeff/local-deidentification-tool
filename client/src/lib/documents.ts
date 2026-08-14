@@ -1,13 +1,11 @@
-/* Design philosophy: quiet archival utility — document operations stay local, explicit, and reversible. */
-
-// 設計提醒：文件處理與 OCR 均在瀏覽器記憶體完成；這個模組只負責解析、進度回報與本機匯出。
+// 設計提醒：文件處理、OCR 與匯出均在瀏覽器記憶體完成；取消訊號會終止目前的 PDF 工作並釋放資源。
 
 import { createPdfOcrWorker, recognizePdfPage, type PdfOcrWorker } from "./ocr";
 
 export type SupportedDocumentType = "xlsx" | "docx" | "pdf" | "text";
 
 export type DocumentParseProgress = {
-  phase: "preparing" | "reading" | "rendering" | "ocr" | "complete";
+  phase: "preparing" | "reading" | "rendering" | "ocr" | "complete" | "cancelled";
   currentPage: number;
   totalPages: number;
   percent: number;
@@ -24,6 +22,22 @@ export type ParsedDocument = {
   sheetCount?: number;
   warnings: string[];
 };
+
+export type DocumentParseOptions = {
+  onProgress?: (progress: DocumentParseProgress) => void;
+  signal?: AbortSignal;
+};
+
+export class DocumentParseCancelledError extends Error {
+  constructor() {
+    super("已取消本機文件解析。");
+    this.name = "DocumentParseCancelledError";
+  }
+}
+
+function ensureNotCancelled(signal?: AbortSignal) {
+  if (signal?.aborted) throw new DocumentParseCancelledError();
+}
 
 function detectType(file: File): SupportedDocumentType | null {
   const extension = file.name.split(".").pop()?.toLowerCase();
@@ -78,25 +92,41 @@ async function parseWord(file: File): Promise<ParsedDocument> {
   };
 }
 
-async function parsePdf(file: File, onProgress?: (progress: DocumentParseProgress) => void): Promise<ParsedDocument> {
+async function parsePdf(file: File, options: DocumentParseOptions = {}): Promise<ParsedDocument> {
   const [{ getDocument, GlobalWorkerOptions }, workerModule] = await Promise.all([
     import("pdfjs-dist"),
     import("pdfjs-dist/build/pdf.worker.mjs?url"),
   ]);
   GlobalWorkerOptions.workerSrc = workerModule.default;
   const buffer = await file.arrayBuffer();
-  const pdf = await getDocument({ data: new Uint8Array(buffer) }).promise;
+  const loadingTask = getDocument({ data: new Uint8Array(buffer) });
+  const abortLoading = () => { void loadingTask.destroy(); };
+  options.signal?.addEventListener("abort", abortLoading, { once: true });
+
   const pages: string[] = [];
   const pagesWithoutText: number[] = [];
   let ocrPageCount = 0;
   let ocrWorker: PdfOcrWorker | null = null;
+  let ocrTerminated = false;
+  let pdf: Awaited<typeof loadingTask.promise> | null = null;
+  let totalPages = 0;
   let activeOcrPage = 0;
-  const totalPages = pdf.numPages;
-  const report = (progress: Omit<DocumentParseProgress, "totalPages">) => onProgress?.({ ...progress, totalPages });
+  const report = (progress: Omit<DocumentParseProgress, "totalPages">) => options.onProgress?.({ ...progress, totalPages });
+  const terminateOcrWorker = async () => {
+    if (ocrWorker && !ocrTerminated) {
+      ocrTerminated = true;
+      await ocrWorker.terminate();
+    }
+  };
+  const abortOcr = () => { void terminateOcrWorker(); };
 
   try {
+    ensureNotCancelled(options.signal);
+    pdf = await loadingTask.promise;
+    totalPages = pdf.numPages;
     report({ phase: "reading", currentPage: 0, percent: 0, message: "PDF 已載入，正在檢查文字層", detail: `共 ${totalPages} 頁；有文字的頁面會直接解析，掃描頁才會啟用 OCR。` });
     for (let pageNumber = 1; pageNumber <= totalPages; pageNumber += 1) {
+      ensureNotCancelled(options.signal);
       report({ phase: "reading", currentPage: pageNumber, percent: Math.round(((pageNumber - 1) / totalPages) * 100), message: "正在讀取 PDF 文字層", detail: `正在檢查第 ${pageNumber} / ${totalPages} 頁是否包含可選取文字。` });
       const page = await pdf.getPage(pageNumber);
       const content = await page.getTextContent();
@@ -127,20 +157,29 @@ async function parsePdf(file: File, onProgress?: (progress: DocumentParseProgres
                 ? "正在初始化本機 OCR 引擎"
                 : "本機 OCR 引擎準備中";
           report({ phase: "ocr", currentPage: activeOcrPage, percent, message, detail: `第 ${activeOcrPage} / ${totalPages} 頁 · 本頁 ${Math.round(normalized * 100)}%` });
-        });
+        }, options.signal);
+        ensureNotCancelled(options.signal);
+        options.signal?.addEventListener("abort", abortOcr, { once: true });
       }
       const ocrText = await recognizePdfPage(ocrWorker, page, ({ stage, progress, message }) => {
         const normalized = Math.min(Math.max(progress, 0), 1);
         const percent = Math.round(((pageNumber - 1 + normalized) / totalPages) * 100);
         report({ phase: stage === "rendering" ? "rendering" : "ocr", currentPage: pageNumber, percent, message, detail: `第 ${pageNumber} / ${totalPages} 頁 · 本頁 ${Math.round(normalized * 100)}%` });
-      });
+      }, options.signal);
       ocrPageCount += 1;
       if (ocrText) pages.push(`【第 ${pageNumber} 頁】\n${ocrText}`);
       report({ phase: "ocr", currentPage: pageNumber, percent: Math.round((pageNumber / totalPages) * 100), message: ocrText ? "已完成本機 OCR" : "此頁未辨識到文字", detail: `第 ${pageNumber} / ${totalPages} 頁已完成；${ocrText ? "結果已加入待處理文字。" : "請在完成後人工檢查此頁。"}` });
     }
+  } catch (error) {
+    if (options.signal?.aborted || error instanceof DocumentParseCancelledError || (error instanceof DOMException && error.name === "AbortError")) {
+      throw new DocumentParseCancelledError();
+    }
+    throw error;
   } finally {
-    if (ocrWorker) await ocrWorker.terminate();
-    pdf.cleanup();
+    options.signal?.removeEventListener("abort", abortLoading);
+    options.signal?.removeEventListener("abort", abortOcr);
+    await terminateOcrWorker();
+    pdf?.cleanup();
   }
 
   const warnings: string[] = [];
@@ -158,27 +197,25 @@ async function parsePdf(file: File, onProgress?: (progress: DocumentParseProgres
     text: pages.join("\n\n"),
     fileName: file.name,
     fileType: "pdf",
-    pageCount: pdf.numPages,
+    pageCount: totalPages,
     ocrPageCount,
     warnings,
   };
 }
 
-export async function parseDocument(file: File, options: { onProgress?: (progress: DocumentParseProgress) => void } = {}): Promise<ParsedDocument> {
+export async function parseDocument(file: File, options: DocumentParseOptions = {}): Promise<ParsedDocument> {
+  ensureNotCancelled(options.signal);
   const fileType = detectType(file);
   if (!fileType) throw new Error("目前支援 TXT、CSV、JSON、XLSX、XLS、DOCX 與 PDF 檔案。");
   if (file.size > 25 * 1024 * 1024) throw new Error("目前限制單一檔案不超過 25 MB，以維持本機瀏覽器處理穩定性。");
 
   if (fileType === "xlsx") return parseSpreadsheet(file);
   if (fileType === "docx") return parseWord(file);
-  if (fileType === "pdf") return parsePdf(file, options.onProgress);
+  if (fileType === "pdf") return parsePdf(file, options);
 
-  return {
-    text: await file.text(),
-    fileName: file.name,
-    fileType,
-    warnings: [],
-  };
+  const text = await file.text();
+  ensureNotCancelled(options.signal);
+  return { text, fileName: file.name, fileType, warnings: [] };
 }
 
 function safeBaseName(fileName: string) {

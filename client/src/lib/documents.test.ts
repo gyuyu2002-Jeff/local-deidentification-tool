@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 import * as XLSX from "xlsx";
-import { buildBrandedFileName, parseDocument } from "./documents";
+import { buildBrandedFileName, DocumentParseCancelledError, parseDocument } from "./documents";
 
 describe("parseDocument", () => {
   it("reads plain text locally", async () => {
@@ -26,6 +26,13 @@ describe("parseDocument", () => {
     expect(parsed.sheetCount).toBe(1);
     expect(parsed.text).toContain("【工作表：客戶資料】");
     expect(parsed.text).toContain("a@example.com");
+  });
+
+  it("stops before parsing when a local cancellation signal is already aborted", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const file = new File(["姓名：王小明"], "notes.txt", { type: "text/plain" });
+    await expect(parseDocument(file, { signal: controller.signal })).rejects.toBeInstanceOf(DocumentParseCancelledError);
   });
 });
 

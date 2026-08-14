@@ -45,6 +45,7 @@ import {
   exportPdf,
   exportSpreadsheet,
   exportWord,
+  DocumentParseCancelledError,
   parseDocument,
   type DocumentParseProgress,
   type ParsedDocument,
@@ -55,6 +56,7 @@ import {
   deidentifyText,
   type RuleId,
 } from "@/lib/deidentify";
+import { downloadCustomDictionary, parseCustomDictionary } from "@/lib/custom-dictionary";
 
 const EXAMPLE_TEXT = `客戶聯絡人：王小明
 Email：ming.wang@example.com
@@ -153,6 +155,7 @@ export default function Home() {
   const [fileName, setFileName] = useState("");
   const [parsedDocument, setParsedDocument] = useState<ParsedDocument | null>(null);
   const [isParsing, setIsParsing] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
   const [parseProgress, setParseProgress] = useState<DocumentParseProgress | null>(null);
   const [parseError, setParseError] = useState("");
   const [showDiff, setShowDiff] = useState(false);
@@ -161,6 +164,8 @@ export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dictionaryInputRef = useRef<HTMLInputElement>(null);
+  const parseControllerRef = useRef<AbortController | null>(null);
 
   const analysis = useMemo(
     () => deidentifyText(input, enabledRules, customTerms),
@@ -197,11 +202,14 @@ export default function Home() {
 
   const handleFile = async (file?: File) => {
     if (!file) return;
+    const controller = new AbortController();
+    parseControllerRef.current = controller;
     setIsParsing(true);
+    setIsCancelling(false);
     setParseError("");
     setParseProgress({ phase: "preparing", currentPage: 0, totalPages: 0, percent: 0, message: "正在準備本機解析", detail: `正在讀取 ${file.name}；掃描 PDF 會逐頁顯示 OCR 進度。` });
     try {
-      const parsed = await parseDocument(file, { onProgress: setParseProgress });
+      const parsed = await parseDocument(file, { onProgress: setParseProgress, signal: controller.signal });
       setInput(parsed.text);
       setFileName(file.name);
       setParsedDocument(parsed);
@@ -210,13 +218,27 @@ export default function Home() {
       setActiveStep("rules");
       toast.success(`已在本機解析 ${file.name}。`);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "檔案解析失敗，請確認檔案格式。";
-      setParseError(message);
-      toast.error(message);
+      if (error instanceof DocumentParseCancelledError) {
+        const message = "已取消本機解析；原始文字尚未匯入工作區。";
+        setParseError(message);
+        toast.info(message);
+      } else {
+        const message = error instanceof Error ? error.message : "檔案解析失敗，請確認檔案格式。";
+        setParseError(message);
+        toast.error(message);
+      }
     } finally {
+      if (parseControllerRef.current === controller) parseControllerRef.current = null;
       setIsParsing(false);
+      setIsCancelling(false);
       setParseProgress(null);
     }
+  };
+
+  const cancelParsing = () => {
+    if (!parseControllerRef.current || !isParsing) return;
+    setIsCancelling(true);
+    parseControllerRef.current.abort();
   };
 
   const toggleRule = (id: RuleId) => {
@@ -239,6 +261,7 @@ export default function Home() {
   };
 
   const clearWorkspace = () => {
+    parseControllerRef.current?.abort();
     setClearConfirmOpen(false);
     setInput("");
     setResult("");
@@ -252,7 +275,27 @@ export default function Home() {
     setActiveStep("source");
     setCopied(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
+    if (dictionaryInputRef.current) dictionaryInputRef.current.value = "";
     toast.success("工作區已清除，未留下原始資料。");
+  };
+
+  const exportDictionary = () => {
+    downloadCustomDictionary(customTerms);
+    toast.success(`已匯出 ${customTerms.length} 個自訂關鍵字。`);
+  };
+
+  const importDictionary = async (file?: File) => {
+    if (!file) return;
+    try {
+      const terms = parseCustomDictionary(await file.text());
+      setCustomTerms(terms);
+      setResult("");
+      toast.success(`已在本機匯入 ${terms.length} 個自訂關鍵字，並取代目前字典。`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "字典匯入失敗，請確認 JSON 格式。");
+    } finally {
+      if (dictionaryInputRef.current) dictionaryInputRef.current.value = "";
+    }
   };
 
   const copyResult = async () => {
@@ -357,7 +400,7 @@ export default function Home() {
               <div className="ocr-progress" role="status" aria-live="polite">
                 <div className="ocr-progress__header">
                   <span className="ocr-progress__copy"><LoaderCircle className="spin" size={14} /><span><strong>{progressTitle}</strong><small>{parseProgress.message}</small></span></span>
-                  <span className="ocr-progress__percent">{parseProgress.percent}%</span>
+                  <span className="ocr-progress__controls"><span className="ocr-progress__percent">{parseProgress.percent}%</span><button className="text-button ocr-progress__cancel" onClick={cancelParsing} disabled={isCancelling}>{isCancelling ? "正在取消" : "取消處理"} <X size={13} /></button></span>
                 </div>
                 <div className="ocr-progress__meta"><span>{progressPageLabel}</span><span>{parseProgress.detail}</span></div>
                 <div className="ocr-progress__track" role="progressbar" aria-label="PDF 本機 OCR 進度" aria-valuenow={parseProgress.percent} aria-valuemin={0} aria-valuemax={100}><span style={{ width: `${parseProgress.percent}%` }} /></div>
@@ -368,7 +411,7 @@ export default function Home() {
               <span>{countCharacters(input)} 字元</span>
             </div>
             <div className="clear-scope-note"><Info size={13} /> 清除會移除工作區記憶體中的原文、結果、檔案資訊、OCR 狀態與自訂關鍵字；不影響已下載的結果檔。</div>
-            {parseError && <div className="parse-error"><Info size={14} /> {parseError}</div>}
+            {parseError && <div className={parseError.startsWith("已取消") ? "parse-warning parse-cancelled" : "parse-error"}><Info size={14} /> {parseError}</div>}
             {parsedDocument?.warnings.map((warning) => <div className={`parse-warning ${warning.includes("本機使用繁體中文 OCR") ? "parse-warning--ocr" : ""}`} key={warning}><Info size={14} /> {warning}</div>)}
           </div>
 
@@ -394,7 +437,7 @@ export default function Home() {
               })}
             </div>
             <div className="custom-rule">
-              <div className="custom-rule__label"><Fingerprint size={17} /><span><strong>自訂關鍵字</strong><small>例如：專案名稱、內部代號、客戶姓名</small></span></div>
+              <div className="custom-rule__topline"><div className="custom-rule__label"><Fingerprint size={17} /><span><strong>自訂關鍵字</strong><small>例如：專案名稱、內部代號、客戶姓名</small></span></div><div className="custom-rule__dictionary-actions"><button className="text-button" onClick={exportDictionary} disabled={!customTerms.length}><ArrowDownToLine size={13} /> 匯出字典</button><button className="text-button text-button--quiet" onClick={() => dictionaryInputRef.current?.click()}><Upload size={13} /> 匯入字典</button><input ref={dictionaryInputRef} type="file" accept="application/json,.json" onChange={(event) => importDictionary(event.target.files?.[0])} hidden /></div></div>
               <div className="custom-rule__input"><input value={customInput} onChange={(event) => setCustomInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") addCustomTerm(); }} placeholder="輸入後按 Enter，可用逗號分隔" /><button onClick={addCustomTerm} aria-label="新增自訂關鍵字">新增</button></div>
               {customTerms.length > 0 && <div className="term-list">{customTerms.map((term) => <span key={term}>{term}<button onClick={() => setCustomTerms((current) => current.filter((item) => item !== term))} aria-label={`移除 ${term}`}><X size={12} /></button></span>)}</div>}
             </div>
@@ -441,7 +484,7 @@ export default function Home() {
           </div>
           <AlertDialogFooter className="clear-confirm-dialog__footer">
             <AlertDialogCancel className="clear-confirm-dialog__cancel">保留目前資料</AlertDialogCancel>
-            <AlertDialogAction className="clear-confirm-dialog__confirm">清除工作區</AlertDialogAction>
+            <AlertDialogAction className="clear-confirm-dialog__confirm" onClick={clearWorkspace}>清除工作區</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
