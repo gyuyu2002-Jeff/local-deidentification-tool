@@ -80,7 +80,7 @@ function LocalMark({ compact = false }: { compact?: boolean }) {
         <span />
       </span>
       <span>
-        <strong>無意識</strong>
+        <strong className="brand-wordmark">無意識</strong>
         {!compact && <small>去識別化工作站</small>}
       </span>
     </div>
@@ -488,7 +488,7 @@ export default function Home() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <footer className="site-footer"><span>無意識 · 去識別化工作站</span><span>本機處理 · 無雲端副本 · 可檢查的替換</span><span>v0.1 / 2026</span></footer>
+      <footer className="site-footer"><span className="site-footer__brand">無意識 · 去識別化工作站</span><span>本機處理 · 無雲端副本 · 可檢查的替換</span><span>v0.1 / 2026</span></footer>
     </div>
   );
 }

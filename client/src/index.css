@@ -1,6 +1,6 @@
 /* Design philosophy: quiet archival utility — ink-green structure, paper lightness, amber audit marks. */
 
-/* 設計提醒：本檔維持「安靜的資料保管庫」語彙；米白紙張、深墨綠檔案櫃、琥珀狀態標記與索引細線共同形成介面骨架。 */
+/* 設計提醒：工作區維持安靜、可讀的企業工具基底；幻彩只聚焦於「無意識」字標與品牌符號，像珍珠膜上的光譜，不把整站變成霓虹介面。 */
 
 @import "tailwindcss";
 @import "tw-animate-css";
@@ -59,6 +59,10 @@
   --paper: #f7f3eb;
   --paper-deep: #ebe4d7;
   --amber: #c8943e;
+  --prism-aqua: #a8eee3;
+  --prism-violet: #b9a9ff;
+  --prism-rose: #f4a9c3;
+  --prism-gold: #f5d58b;
   --line: rgba(32, 51, 43, 0.15);
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 }
@@ -81,11 +85,12 @@
   .topbar__actions { min-width: 220px; display: flex; justify-content: flex-end; align-items: center; gap: 15px; position: relative; }
   .local-mark { display: flex; align-items: center; gap: 11px; letter-spacing: 0.14em; }
   .local-mark strong { display: block; font: 700 15px/1 "DM Sans", "Noto Sans TC", sans-serif; }
+  .brand-wordmark, .site-footer__brand { color: #f5f0e7; background-image: linear-gradient(110deg, #f8f1e5 0%, var(--prism-aqua) 28%, var(--prism-violet) 52%, var(--prism-rose) 74%, var(--prism-gold) 100%); background-size: 180% 100%; background-position: 0% 50%; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; animation: prism-shift 8s ease-in-out infinite; }
   .local-mark small { display: block; margin-top: 5px; color: rgba(245, 240, 231, 0.56); letter-spacing: 0; font-size: 10px; font-weight: 400; }
-  .local-mark__glyph { width: 30px; height: 34px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border: 1px solid var(--amber); position: relative; box-shadow: 4px 4px 0 rgba(200, 148, 62, 0.32); transform: rotate(45deg); }
-  .local-mark__glyph::before { content: ""; position: absolute; inset: 4px; border: 1px solid rgba(200, 148, 62, 0.62); }
-  .local-mark__glyph::after { content: ""; position: absolute; width: 7px; height: 7px; border: 1px solid var(--amber); border-radius: 50%; top: 12px; left: 10px; box-shadow: 0 6px 0 -2px var(--amber); }
-  .local-mark__glyph span { display: block; width: 12px; height: 1px; background: var(--amber); transform: rotate(-45deg); opacity: 0.85; }
+  .local-mark__glyph { width: 30px; height: 34px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border: 1px solid transparent; background: linear-gradient(var(--ink), var(--ink)) padding-box, linear-gradient(140deg, var(--prism-gold), var(--prism-aqua) 35%, var(--prism-violet) 62%, var(--prism-rose)) border-box; position: relative; box-shadow: 4px 4px 0 rgba(200, 148, 62, 0.32), 0 0 18px rgba(168, 238, 227, 0.08); transform: rotate(45deg); }
+  .local-mark__glyph::before { content: ""; position: absolute; inset: 4px; border: 1px solid rgba(185, 169, 255, 0.54); }
+  .local-mark__glyph::after { content: ""; position: absolute; width: 7px; height: 7px; border: 1px solid var(--prism-gold); border-radius: 50%; top: 12px; left: 10px; box-shadow: 0 6px 0 -2px var(--prism-rose); }
+  .local-mark__glyph span { display: block; width: 12px; height: 1px; background: linear-gradient(90deg, var(--prism-aqua), var(--prism-violet), var(--prism-rose)); transform: rotate(-45deg); opacity: 0.9; }
   .secure-pill { display: flex; align-items: center; gap: 7px; border: 1px solid rgba(245, 240, 231, 0.22); border-radius: 999px; padding: 8px 12px; color: #f5f0e7; font-size: 10px; font-weight: 700; letter-spacing: 0.11em; }
   .secure-pill svg { color: var(--amber); }
   .icon-button { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid rgba(245, 240, 231, 0.22); color: #f5f0e7; background: transparent; transition: background 180ms var(--ease-out), transform 160ms var(--ease-out); }
@@ -280,12 +285,14 @@
   .tip-panel > span { color: rgba(32, 51, 43, 0.42); font: 9px "IBM Plex Mono", monospace; }
   .site-footer { display: flex; justify-content: space-between; gap: 15px; padding: 16px clamp(22px, 5vw, 76px); border-top: 1px solid rgba(247, 243, 235, 0.15); background: var(--ink); color: rgba(247, 243, 235, 0.45); font: 9px "IBM Plex Mono", monospace; letter-spacing: 0.08em; }
   .site-footer span:first-child { color: var(--amber); }
+  .site-footer__brand { font-weight: 700; }
 
   .rise-in { animation: rise-in 500ms var(--ease-out) both; }
   @keyframes rise-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes prism-shift { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
   @keyframes pop-in { from { opacity: 0; transform: translateY(-5px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
   @keyframes spin { to { transform: rotate(360deg); } }
-  @media (prefers-reduced-motion: reduce) { .rise-in, .menu-popover { animation: none; } *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; } }
+  @media (prefers-reduced-motion: reduce) { .rise-in, .menu-popover, .brand-wordmark, .site-footer__brand { animation: none; } *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; } }
 
   @media (max-width: 1050px) {
     .workspace { grid-template-columns: 150px minmax(0, 1fr); gap: 32px; }
