@@ -84,7 +84,7 @@
   .topbar__rule { display: inline-block; width: 42px; height: 1px; background: var(--amber); }
   .topbar__actions { min-width: 220px; display: flex; justify-content: flex-end; align-items: center; gap: 15px; position: relative; }
   .local-mark { display: flex; align-items: center; gap: 11px; letter-spacing: 0.14em; }
-  .local-mark strong { display: block; font: 700 15px/1 "DM Sans", "Noto Sans TC", sans-serif; }
+  .local-mark strong { display: block; font: 800 17px/1 "DM Sans", "Noto Sans TC", sans-serif; letter-spacing: 0.2em; }
   .brand-wordmark, .site-footer__brand { color: #f5f0e7; background-image: linear-gradient(110deg, #f8f1e5 0%, var(--prism-aqua) 28%, var(--prism-violet) 52%, var(--prism-rose) 74%, var(--prism-gold) 100%); background-size: 180% 100%; background-position: 0% 50%; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; animation: prism-shift 8s ease-in-out infinite; }
   .local-mark small { display: block; margin-top: 5px; color: rgba(245, 240, 231, 0.56); letter-spacing: 0; font-size: 10px; font-weight: 400; }
   .local-mark__glyph { width: 30px; height: 34px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border: 1px solid transparent; background: linear-gradient(var(--ink), var(--ink)) padding-box, linear-gradient(140deg, var(--prism-gold), var(--prism-aqua) 35%, var(--prism-violet) 62%, var(--prism-rose)) border-box; position: relative; box-shadow: 4px 4px 0 rgba(200, 148, 62, 0.32), 0 0 18px rgba(168, 238, 227, 0.08); transform: rotate(45deg); }
@@ -123,13 +123,16 @@
   .step-rail__footer p { margin: 0; font-size: 10px; line-height: 1.65; }
   .step-rail__footer strong { color: var(--ink); font-size: 11px; }
 
-  .workbench { min-width: 0; }
-  .workbench__intro { display: flex; align-items: flex-end; justify-content: space-between; gap: 30px; margin-bottom: 48px; }
+  .workbench { min-width: 0; position: relative; }
+  .workbench::before { content: ""; position: absolute; top: 0; bottom: 0; left: -18px; width: 1px; background: linear-gradient(to bottom, rgba(32, 51, 43, 0.28), rgba(32, 51, 43, 0.08) 22%, transparent 64%); }
+  .workbench__intro { display: flex; align-items: flex-end; justify-content: space-between; gap: 30px; margin-bottom: 48px; padding-left: 18px; position: relative; }
+  .workbench__intro::before { content: ""; position: absolute; top: 6px; left: -21px; width: 7px; height: 7px; background: var(--ink); }
   .workbench__intro h1 { margin: 13px 0 0; color: var(--ink); font: 700 clamp(38px, 5vw, 66px)/0.98 "DM Sans", "Noto Sans TC", sans-serif; letter-spacing: -0.055em; }
-  .workbench__intro h1 em { color: var(--amber); font-style: normal; }
-  .intro-note { max-width: 245px; margin: 0 0 4px; color: var(--ink-soft); font-size: 12px; line-height: 1.8; }
-  .editor-card, .result-card { background: rgba(255, 253, 248, 0.74); border: 1px solid var(--line); box-shadow: 0 16px 45px rgba(58, 69, 56, 0.05); }
-  .editor-card__header, .result-card__header { display: flex; align-items: center; justify-content: space-between; padding: 15px 18px; border-bottom: 1px solid var(--line); }
+  .workbench__intro h1 em { color: var(--ink); font-style: normal; font-weight: 500; }
+  .intro-note { max-width: 258px; margin: 0 0 4px; color: var(--ink-soft); font-size: 12px; line-height: 1.8; }
+  .editor-card, .result-card { position: relative; background: rgba(255, 253, 248, 0.74); border: 1px solid var(--line); box-shadow: 0 16px 45px rgba(58, 69, 56, 0.05); }
+  .editor-card::before, .result-card::before { content: ""; position: absolute; top: -1px; left: -1px; width: 34px; height: 1px; background: var(--ink); }
+  .editor-card__header, .result-card__header { display: flex; align-items: center; justify-content: space-between; padding: 15px 18px; border-bottom: 1px solid var(--line); background-image: linear-gradient(90deg, rgba(32, 51, 43, 0.045) 0, rgba(32, 51, 43, 0.045) 34px, transparent 34px); }
   .editor-card__title { display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: 700; }
   .section-index { width: 22px; height: 22px; display: grid; place-items: center; color: var(--ink); background: var(--paper-deep); font: 700 10px "IBM Plex Mono", monospace; }
   .section-index--amber { background: var(--amber); color: var(--ink); }
@@ -176,16 +179,28 @@
   .pdf-preview-dialog__meta span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .pdf-preview-dialog__meta svg { color: var(--amber); flex: 0 0 auto; }
   .pdf-preview-dialog__document { max-height: min(52vh, 520px); overflow: auto; margin: 0; padding: 22px 24px; background: rgba(248, 246, 239, 0.74); color: var(--ink); white-space: pre-wrap; word-break: break-word; font: 12px/1.9 "IBM Plex Mono", "Noto Sans TC", monospace; }
-  .pdf-preview-dialog__page-controls { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 12px 24px; border-bottom: 1px solid var(--line); background: rgba(235, 228, 215, 0.46); color: var(--ink-soft); font: 10px "IBM Plex Mono", "Noto Sans TC", monospace; }
+  .pdf-preview-dialog__page-controls { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 24px; border-bottom: 1px solid var(--line); background: rgba(235, 228, 215, 0.46); color: var(--ink-soft); font: 10px "IBM Plex Mono", "Noto Sans TC", monospace; }
+  .pdf-preview-dialog__page-navigation, .pdf-preview-dialog__page-actions { display: flex; align-items: center; gap: 10px; }
   .pdf-preview-dialog__page-controls button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 78px; padding: 7px 9px; border: 1px solid rgba(32, 51, 43, 0.24); background: rgba(255, 253, 248, 0.72); color: var(--ink); font: 700 10px "Noto Sans TC", sans-serif; transition: background 160ms var(--ease-out), color 160ms var(--ease-out); }
   .pdf-preview-dialog__page-controls button:hover:not(:disabled) { background: var(--ink); color: var(--paper); }
   .pdf-preview-dialog__page-controls button:disabled { cursor: not-allowed; opacity: 0.36; }
   .pdf-preview-dialog__page-controls label { display: inline-flex; align-items: center; gap: 6px; }
   .pdf-preview-dialog__page-controls input { width: 42px; border: 1px solid rgba(32, 51, 43, 0.24); outline: 0; padding: 6px 4px; background: var(--paper); color: var(--ink); text-align: center; font: 700 10px "IBM Plex Mono", monospace; }
   .pdf-preview-dialog__page-controls input:focus { border-color: var(--amber-deep); box-shadow: 0 0 0 2px rgba(200, 148, 62, 0.14); }
+  .pdf-preview-dialog__mode, .pdf-preview-dialog__fullscreen { display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 7px 9px; border: 1px solid rgba(32, 51, 43, 0.24); background: rgba(255, 253, 248, 0.72); color: var(--ink); font: 700 10px "Noto Sans TC", sans-serif; transition: background 160ms var(--ease-out), border-color 160ms var(--ease-out), color 160ms var(--ease-out), transform 160ms var(--ease-out); }
+  .pdf-preview-dialog__mode:hover:not(:disabled), .pdf-preview-dialog__fullscreen:hover:not(:disabled) { border-color: var(--ink); background: var(--ink); color: var(--paper); }
+  .pdf-preview-dialog__mode:active:not(:disabled), .pdf-preview-dialog__fullscreen:active:not(:disabled) { transform: scale(0.97); }
+  .pdf-preview-dialog__mode--active { border-color: var(--amber); background: rgba(200, 148, 62, 0.15); color: var(--ink); }
+  .pdf-preview-dialog__fullscreen svg, .pdf-preview-dialog__mode svg { color: var(--amber-deep); }
+  .pdf-preview-dialog__mode:hover:not(:disabled) svg, .pdf-preview-dialog__fullscreen:hover:not(:disabled) svg { color: var(--prism-gold); }
   .pdf-visual-compare { position: relative; max-height: min(64vh, 720px); overflow: auto; padding: 18px 24px 22px; background: #e8e2d7; }
   .pdf-visual-compare__loading { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: center; gap: 8px; width: fit-content; margin: 0 auto 12px; padding: 7px 10px; background: var(--ink); color: var(--paper); box-shadow: 0 8px 20px rgba(20, 34, 28, 0.15); font: 10px "IBM Plex Mono", "Noto Sans TC", monospace; }
   .pdf-visual-compare__loading svg { color: var(--amber); }
+  .pdf-visual-compare__review-hint { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 auto 12px; padding: 9px 11px; border-left: 2px solid #3a77a8; background: rgba(255, 253, 248, 0.78); color: var(--ink-soft); font: 10px/1.55 "Noto Sans TC", sans-serif; }
+  .pdf-visual-compare__review-hint span, .pdf-visual-compare__review-hint button { display: inline-flex; align-items: center; gap: 6px; }
+  .pdf-visual-compare__review-hint svg { color: #3a77a8; }
+  .pdf-visual-compare__review-hint button { flex: 0 0 auto; border: 0; padding: 5px 0; background: transparent; color: var(--ink); font: 700 10px "Noto Sans TC", sans-serif; }
+  .pdf-visual-compare__review-hint button:hover { color: #3a77a8; }
   .pdf-visual-compare__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; align-items: start; }
   .pdf-page-sheet { min-width: 0; margin: 0; padding: 10px; background: rgba(255, 253, 248, 0.7); border: 1px solid rgba(32, 51, 43, 0.16); box-shadow: 0 10px 24px rgba(32, 51, 43, 0.08); }
   .pdf-page-sheet--revised { border-color: rgba(200, 148, 62, 0.58); }
@@ -193,6 +208,8 @@
   .pdf-page-sheet figcaption svg { color: var(--amber-deep); }
   .pdf-page-sheet figcaption span { margin-left: auto; color: var(--amber-deep); font: 9px "IBM Plex Mono", monospace; font-weight: 400; }
   .pdf-page-sheet canvas { display: block; width: 100%; height: auto; background: #fff; }
+  .pdf-visual-compare--editing .pdf-page-sheet--revised canvas { cursor: crosshair; outline: 1px solid rgba(58, 119, 168, 0.36); outline-offset: 3px; touch-action: none; }
+  .pdf-visual-compare--editing .pdf-page-sheet--revised canvas:focus-visible { outline: 2px solid #3a77a8; outline-offset: 4px; }
   .pdf-visual-compare__notice { margin: 12px 0 0; padding: 9px 11px; border-left: 2px solid var(--amber); background: rgba(255, 253, 248, 0.62); color: var(--ink-soft); font: 10px/1.65 "Noto Sans TC", sans-serif; }
   .pdf-preview-dialog__status { display: flex; align-items: flex-start; gap: 9px; padding: 12px 24px; border-top: 1px solid rgba(200, 148, 62, 0.3); background: rgba(200, 148, 62, 0.1); color: var(--ink-soft); }
   .pdf-preview-dialog__status svg { flex: 0 0 auto; margin-top: 2px; color: var(--amber); }
@@ -204,6 +221,10 @@
   .pdf-preview-dialog__back:hover { color: var(--ink); }
   .pdf-preview-dialog__download { min-width: 160px; }
   .pdf-preview-dialog__download:disabled { cursor: wait; opacity: 0.72; }
+  .pdf-preview-dialog:fullscreen { width: 100vw; max-width: none !important; height: 100vh; max-height: none; display: grid; grid-template-rows: auto auto auto minmax(0, 1fr) auto; border: 0; border-radius: 0; box-shadow: none; background: var(--paper); }
+  .pdf-preview-dialog:fullscreen .pdf-visual-compare { max-height: none; min-height: 0; }
+  .pdf-preview-dialog:fullscreen .pdf-visual-compare__grid { max-width: 1720px; width: 100%; margin: 0 auto; }
+  .pdf-preview-dialog:fullscreen .pdf-preview-dialog__header { padding-top: 18px; padding-bottom: 13px; }
   .parse-error, .parse-warning { display: flex; align-items: flex-start; gap: 8px; padding: 9px 18px; font-size: 10px; line-height: 1.6; }
   .parse-error { background: rgba(163, 76, 56, 0.1); color: #8b493c; }
   .parse-warning { background: rgba(200, 148, 62, 0.1); color: #85652e; }
@@ -370,10 +391,12 @@
     .editor-card__tools, .result-card__actions { gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
     .pdf-preview-dialog__meta { align-items: flex-start; flex-direction: column; gap: 6px; }
     .pdf-preview-dialog__document { max-height: 48vh; padding: 18px; }
-    .pdf-preview-dialog__page-controls { gap: 7px; padding: 10px 18px; }
+    .pdf-preview-dialog__page-controls { align-items: flex-start; flex-direction: column; gap: 9px; padding: 10px 18px; }
+    .pdf-preview-dialog__page-navigation, .pdf-preview-dialog__page-actions { width: 100%; justify-content: space-between; gap: 7px; }
     .pdf-preview-dialog__page-controls button { min-width: 0; padding: 7px; font-size: 9px; }
     .pdf-preview-dialog__page-controls label { gap: 4px; }
     .pdf-visual-compare { max-height: 56vh; padding: 14px 18px 18px; }
+    .pdf-visual-compare__review-hint { align-items: flex-start; flex-direction: column; }
     .pdf-visual-compare__grid { gap: 14px; }
     .pdf-preview-dialog__header, .pdf-preview-dialog__meta, .pdf-preview-dialog__status { padding-left: 18px; padding-right: 18px; }
     .pdf-preview-dialog__footer { align-items: stretch; flex-direction: column-reverse; padding: 14px 18px 18px; }
