@@ -21,3 +21,5 @@ PDF.js 已在瀏覽器本機成功解析 fixture 的兩頁文字；去識別化�
 視覺檢查發現通用 Dialog 的 `sm:max-w-lg` utility 會壓縮 PDF 比對視窗，因此已以元件專用 `max-width` 覆寫並將比對區最大高度提高到 64vh。修正後，在一般桌面視窗可同時清楚檢閱兩張原始比例頁面；每張頁面的紙張版面、圖片與字型皆保持 PDF.js 渲染結果，右側只加上琥珀色遮罩與替換標記。窄版螢幕維持單欄堆疊，避免將頁面縮到難以閱讀。
 
 目前位置遮罩以 PDF 內嵌文字層的座標為準，因此適用於可選取文字的 PDF。掃描型 PDF 仍可保留原始影像與 OCR 後文字結果；若需要讓掃描影像也有逐字精確遮罩，需在後續版本保留 OCR 字詞座標並進行額外的人工覆核。
+
+GitHub Pages 已完成 commit `e0a094a` 的部署，workflow `31861238539` 狀態為 success。公開首頁及 `assets/index-DsqLTPul.js` 皆回應 HTTP 200，並確認主 bundle 已包含 `PdfVisualCompare` 模組。
