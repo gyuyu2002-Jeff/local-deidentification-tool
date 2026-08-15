@@ -1,6 +1,15 @@
 // 設計提醒：文件處理、OCR 與匯出均在瀏覽器記憶體完成；取消訊號會終止目前的 PDF 工作並釋放資源。
 
 import { createPdfOcrWorker, recognizePdfPage, type PdfOcrWorker } from "./ocr";
+import { type RuleId } from "./deidentify";
+import {
+  createAutomaticRedactions,
+  drawPdfRedactions,
+  isTextItem,
+  resolvePdfRedactions,
+  type PdfRedaction,
+  type TextItemLike,
+} from "./pdf-redactions";
 
 export type SupportedDocumentType = "xlsx" | "docx" | "pdf" | "text";
 
@@ -26,6 +35,14 @@ export type ParsedDocument = {
 export type DocumentParseOptions = {
   onProgress?: (progress: DocumentParseProgress) => void;
   signal?: AbortSignal;
+};
+
+export type PdfExportOptions = {
+  sourcePdfFile?: File | null;
+  enabledRules?: RuleId[];
+  customTerms?: string[];
+  redactionEdits?: PdfRedaction[];
+  hiddenRedactionIds?: string[];
 };
 
 export class DocumentParseCancelledError extends Error {
@@ -286,7 +303,62 @@ function wrapPdfText(text: string, context: CanvasRenderingContext2D, maxWidth: 
   return lines;
 }
 
-export async function exportPdf(text: string, fileName: string) {
+async function exportSourcePdfWithRedactions(file: File, fileName: string, options: PdfExportOptions) {
+  const [{ default: jsPDF }, { getDocument, GlobalWorkerOptions }, workerModule] = await Promise.all([
+    import("jspdf"),
+    import("pdfjs-dist"),
+    import("pdfjs-dist/build/pdf.worker.mjs?url"),
+  ]);
+  GlobalWorkerOptions.workerSrc = workerModule.default;
+  const loadingTask = getDocument({ data: new Uint8Array(await file.arrayBuffer()) });
+  const sourcePdf = await loadingTask.promise;
+  const renderScale = 1.5;
+  const redactionEdits = options.redactionEdits ?? [];
+  const hiddenRedactionIds = options.hiddenRedactionIds ?? [];
+  let outputPdf: InstanceType<typeof jsPDF> | null = null;
+
+  try {
+    for (let pageNumber = 1; pageNumber <= sourcePdf.numPages; pageNumber += 1) {
+      const page = await sourcePdf.getPage(pageNumber);
+      const viewport = page.getViewport({ scale: renderScale });
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.ceil(viewport.width);
+      canvas.height = Math.ceil(viewport.height);
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("無法建立 PDF 匯出畫布，請改用其他瀏覽器重試。");
+
+      await page.render({ canvasContext: context, canvas, viewport }).promise;
+      const textItems = (await page.getTextContent()).items.filter(isTextItem) as unknown as TextItemLike[];
+      const automaticRedactions = createAutomaticRedactions(
+        textItems,
+        pageNumber,
+        viewport.height / viewport.scale,
+        options.enabledRules ?? [],
+        options.customTerms ?? [],
+      );
+      const pageEdits = redactionEdits.filter((item) => item.pageNumber === pageNumber);
+      const redactions = resolvePdfRedactions(automaticRedactions, pageEdits, hiddenRedactionIds);
+      drawPdfRedactions(context, redactions, viewport.scale);
+
+      const orientation = viewport.width > viewport.height ? "landscape" : "portrait";
+      if (!outputPdf) {
+        outputPdf = new jsPDF({ unit: "pt", format: [viewport.width, viewport.height], orientation, compress: true });
+      } else {
+        outputPdf.addPage([viewport.width, viewport.height], orientation);
+      }
+      outputPdf.addImage(canvas.toDataURL("image/jpeg", 0.94), "JPEG", 0, 0, viewport.width, viewport.height, undefined, "FAST");
+    }
+    outputPdf?.save(buildBrandedFileName(fileName, "local", "pdf"));
+  } finally {
+    sourcePdf.cleanup();
+  }
+}
+
+export async function exportPdf(text: string, fileName: string, options: PdfExportOptions = {}) {
+  if (options.sourcePdfFile) {
+    await exportSourcePdfWithRedactions(options.sourcePdfFile, fileName, options);
+    return;
+  }
   const { default: jsPDF } = await import("jspdf");
   const pdf = new jsPDF({ unit: "pt", format: "a4" });
   const pageWidth = 1190;

@@ -2,7 +2,7 @@
 
 // 設計提醒：沿用「安靜的資料保管庫」方向；本頁用檔案索引式流程、克制的琥珀狀態色與清楚的本機資料邊界建立信任。
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDownToLine,
   Check,
@@ -22,6 +22,9 @@ import {
   LoaderCircle,
   LockKeyhole,
   Menu,
+  Maximize2,
+  Minimize2,
+  Pencil,
   ScanLine,
   ShieldCheck,
   Sparkles,
@@ -68,6 +71,7 @@ import {
   type RuleId,
 } from "@/lib/deidentify";
 import { downloadCustomDictionary, parseCustomDictionary } from "@/lib/custom-dictionary";
+import { type PdfRedaction } from "@/lib/pdf-redactions";
 
 const EXAMPLE_TEXT = `客戶聯絡人：王小明
 Email：ming.wang@example.com
@@ -177,6 +181,10 @@ export default function Home() {
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false);
   const [pdfPreviewPage, setPdfPreviewPage] = useState(1);
+  const [isPdfPreviewFullscreen, setIsPdfPreviewFullscreen] = useState(false);
+  const [manualReviewMode, setManualReviewMode] = useState(false);
+  const [pdfRedactionEdits, setPdfRedactionEdits] = useState<PdfRedaction[]>([]);
+  const [hiddenPdfRedactionIds, setHiddenPdfRedactionIds] = useState<string[]>([]);
   const [isPdfExporting, setIsPdfExporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dictionaryInputRef = useRef<HTMLInputElement>(null);
@@ -204,6 +212,12 @@ export default function Home() {
     : "正在建立 PDF 工作區";
   const pdfPageCount = parsedDocument?.fileType === "pdf" ? Math.max(1, parsedDocument.pageCount ?? 1) : 1;
 
+  useEffect(() => {
+    const handleFullscreenChange = () => setIsPdfPreviewFullscreen(document.fullscreenElement?.id === "pdf-preview-dialog");
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
+
   const processText = () => {
     if (!input.trim()) {
       toast.error("請先放入一段文字或讀取檔案。");
@@ -222,6 +236,9 @@ export default function Home() {
     parseControllerRef.current = controller;
     setIsParsing(true);
     setSourcePdfFile(null);
+    setPdfRedactionEdits([]);
+    setHiddenPdfRedactionIds([]);
+    setManualReviewMode(false);
     setIsCancelling(false);
     setParseError("");
     setParseProgress({ phase: "preparing", currentPage: 0, totalPages: 0, percent: 0, message: "正在準備本機解析", detail: `正在讀取 ${file.name}；掃描 PDF 會逐頁顯示 OCR 進度。` });
@@ -291,6 +308,10 @@ export default function Home() {
     setShowDiff(false);
     setPdfPreviewOpen(false);
     setPdfPreviewPage(1);
+    setManualReviewMode(false);
+    setPdfRedactionEdits([]);
+    setHiddenPdfRedactionIds([]);
+    if (document.fullscreenElement) void document.exitFullscreen();
     setIsPdfExporting(false);
     setCustomInput("");
     setCustomTerms([]);
@@ -350,7 +371,13 @@ export default function Home() {
     if (!result || isPdfExporting) return;
     setIsPdfExporting(true);
     try {
-      await exportPdf(result, fileName);
+      await exportPdf(result, fileName, {
+        sourcePdfFile,
+        enabledRules,
+        customTerms,
+        redactionEdits: pdfRedactionEdits,
+        hiddenRedactionIds: hiddenPdfRedactionIds,
+      });
       setPdfPreviewOpen(false);
       toast.success("PDF 已成功下載。", {
         description: "檔案已由本機產生，請至瀏覽器下載位置查看。",
@@ -362,11 +389,28 @@ export default function Home() {
     }
   };
 
+  const togglePdfPreviewFullscreen = async () => {
+    const dialog = document.getElementById("pdf-preview-dialog");
+    if (!dialog) return;
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else {
+        await dialog.requestFullscreen();
+      }
+    } catch {
+      toast.error("目前瀏覽器無法切換全螢幕模式，請確認瀏覽器權限後再試一次。");
+    }
+  };
+
   const loadExample = () => {
     setInput(EXAMPLE_TEXT);
     setFileName("");
     setParsedDocument(null);
     setSourcePdfFile(null);
+    setPdfRedactionEdits([]);
+    setHiddenPdfRedactionIds([]);
+    setManualReviewMode(false);
     setParseError("");
     setParseProgress(null);
     setResult("");
@@ -402,10 +446,10 @@ export default function Home() {
         <section className="workbench">
           <div className="workbench__intro rise-in">
             <div>
-              <span className="eyebrow">01 / LOCAL REDACTION</span>
-              <h1>讓敏感內容<br /><em>留在原地。</em></h1>
+              <span className="eyebrow">01 / DATA BOUNDARY · LOCAL ONLY</span>
+              <h1>資料不離開<br /><em>這台裝置。</em></h1>
             </div>
-            <p className="intro-note">貼上文字或讀取檔案，選定規則後在此裝置完成去識別化。<br />掃描 PDF 會先在本機辨識，再進入同一套規則。</p>
+            <p className="intro-note">先放入需檢查的資料；去識別化、掃描 PDF 辨識與下載前覆核都在此裝置完成，原始內容不會離開瀏覽器。</p>
           </div>
 
           <div className="editor-card rise-in" style={{ animationDelay: "70ms" }}>
@@ -530,22 +574,28 @@ export default function Home() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <Dialog open={pdfPreviewOpen} onOpenChange={(open) => { if (!isPdfExporting) setPdfPreviewOpen(open); }}>
-        <DialogContent className="pdf-preview-dialog" aria-busy={isPdfExporting}>
+      <Dialog open={pdfPreviewOpen} onOpenChange={(open) => { if (!isPdfExporting) { if (!open && document.fullscreenElement) void document.exitFullscreen(); setPdfPreviewOpen(open); } }}>
+        <DialogContent id="pdf-preview-dialog" className={`pdf-preview-dialog ${isPdfPreviewFullscreen ? "pdf-preview-dialog--fullscreen" : ""}`} aria-busy={isPdfExporting} onEscapeKeyDown={(event) => { if (document.fullscreenElement) { event.preventDefault(); void document.exitFullscreen(); } }}>
           <DialogHeader className="pdf-preview-dialog__header">
             <span className="pdf-preview-dialog__kicker">PDF / LOCAL PREVIEW</span>
             <DialogTitle>下載前檢查原始版面</DialogTitle>
             <DialogDescription>左側保留原始 PDF 的版面、圖片與字型；右側在相同頁面上標示去識別化後的遮罩。請逐頁確認後再下載。</DialogDescription>
           </DialogHeader>
-          <div className="pdf-preview-dialog__meta"><span><FileOutput size={14} /> {fileName || "文字工作區"}</span><span>{sourcePdfFile ? `第 ${pdfPreviewPage} / ${pdfPageCount} 頁 · ` : ""}{resultStats.total} 處替換</span></div>
+          <div className="pdf-preview-dialog__meta"><span><FileOutput size={14} /> {fileName || "文字工作區"}</span><span>{sourcePdfFile ? `第 ${pdfPreviewPage} / ${pdfPageCount} 頁 · ` : ""}{resultStats.total} 處自動替換{pdfRedactionEdits.filter((item) => item.origin === "manual").length > 0 ? ` · ${pdfRedactionEdits.filter((item) => item.origin === "manual").length} 處人工遮罩` : ""}</span></div>
           {sourcePdfFile ? (
             <>
-              <div className="pdf-preview-dialog__page-controls" aria-label="PDF 頁面切換">
-                <button type="button" onClick={() => setPdfPreviewPage((page) => Math.max(1, page - 1))} disabled={pdfPreviewPage <= 1 || isPdfExporting}><ChevronLeft size={15} /> 上一頁</button>
-                <label>頁碼 <input type="number" min={1} max={pdfPageCount} value={pdfPreviewPage} onChange={(event) => setPdfPreviewPage(Math.min(pdfPageCount, Math.max(1, Number(event.target.value) || 1)))} disabled={isPdfExporting} aria-label="前往 PDF 頁碼" /> <span>/ {pdfPageCount}</span></label>
-                <button type="button" onClick={() => setPdfPreviewPage((page) => Math.min(pdfPageCount, page + 1))} disabled={pdfPreviewPage >= pdfPageCount || isPdfExporting}>下一頁 <ChevronRight size={15} /></button>
+              <div className="pdf-preview-dialog__page-controls" aria-label="PDF 頁面切換與覆核工具">
+                <div className="pdf-preview-dialog__page-navigation">
+                  <button type="button" onClick={() => setPdfPreviewPage((page) => Math.max(1, page - 1))} disabled={pdfPreviewPage <= 1 || isPdfExporting}><ChevronLeft size={15} /> 上一頁</button>
+                  <label>頁碼 <input type="number" min={1} max={pdfPageCount} value={pdfPreviewPage} onChange={(event) => setPdfPreviewPage(Math.min(pdfPageCount, Math.max(1, Number(event.target.value) || 1)))} disabled={isPdfExporting} aria-label="前往 PDF 頁碼" /> <span>/ {pdfPageCount}</span></label>
+                  <button type="button" onClick={() => setPdfPreviewPage((page) => Math.min(pdfPageCount, page + 1))} disabled={pdfPreviewPage >= pdfPageCount || isPdfExporting}>下一頁 <ChevronRight size={15} /></button>
+                </div>
+                <div className="pdf-preview-dialog__page-actions">
+                  <button type="button" className={`pdf-preview-dialog__mode ${manualReviewMode ? "pdf-preview-dialog__mode--active" : ""}`} onClick={() => setManualReviewMode((enabled) => !enabled)} disabled={isPdfExporting} aria-pressed={manualReviewMode}><Pencil size={14} /> {manualReviewMode ? "覆核編輯中" : "人工覆核"}</button>
+                  <button type="button" className="pdf-preview-dialog__fullscreen" onClick={togglePdfPreviewFullscreen} disabled={isPdfExporting} aria-label={isPdfPreviewFullscreen ? "離開全螢幕模式" : "開啟全螢幕模式"} title={isPdfPreviewFullscreen ? "離開全螢幕（Esc）" : "全螢幕檢閱"}>{isPdfPreviewFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}<span>{isPdfPreviewFullscreen ? "離開全螢幕" : "全螢幕"}</span></button>
+                </div>
               </div>
-              <PdfVisualCompare file={sourcePdfFile} pageNumber={pdfPreviewPage} enabledRules={enabledRules} customTerms={customTerms} />
+              <PdfVisualCompare file={sourcePdfFile} pageNumber={pdfPreviewPage} enabledRules={enabledRules} customTerms={customTerms} manualReviewMode={manualReviewMode} redactionEdits={pdfRedactionEdits} hiddenRedactionIds={hiddenPdfRedactionIds} onRedactionEditsChange={setPdfRedactionEdits} onHiddenRedactionIdsChange={setHiddenPdfRedactionIds} />
             </>
           ) : <pre className="pdf-preview-dialog__document" aria-label="去識別化 PDF 內容預覽">{result}</pre>}
           {isPdfExporting && <div className="pdf-preview-dialog__status" role="status" aria-live="polite"><LoaderCircle className="spin" size={16} /><span><strong>正在產生 PDF…</strong><small>檔案完全在瀏覽器本機處理，請稍候。</small></span></div>}
