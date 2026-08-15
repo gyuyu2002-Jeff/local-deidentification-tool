@@ -25,10 +25,12 @@ import {
   Maximize2,
   Minimize2,
   Pencil,
+  Redo2,
   ScanLine,
   ShieldCheck,
   Sparkles,
   Trash2,
+  Undo2,
   Upload,
   X,
 } from "lucide-react";
@@ -71,7 +73,12 @@ import {
   type RuleId,
 } from "@/lib/deidentify";
 import { downloadCustomDictionary, parseCustomDictionary } from "@/lib/custom-dictionary";
-import { type PdfRedaction } from "@/lib/pdf-redactions";
+import {
+  createPdfReviewHistory,
+  recordPdfReviewState,
+  redoPdfReviewHistory,
+  undoPdfReviewHistory,
+} from "@/lib/pdf-redactions";
 
 const EXAMPLE_TEXT = `客戶聯絡人：王小明
 Email：ming.wang@example.com
@@ -183,8 +190,7 @@ export default function Home() {
   const [pdfPreviewPage, setPdfPreviewPage] = useState(1);
   const [isPdfPreviewFullscreen, setIsPdfPreviewFullscreen] = useState(false);
   const [manualReviewMode, setManualReviewMode] = useState(false);
-  const [pdfRedactionEdits, setPdfRedactionEdits] = useState<PdfRedaction[]>([]);
-  const [hiddenPdfRedactionIds, setHiddenPdfRedactionIds] = useState<string[]>([]);
+  const [pdfReviewHistory, setPdfReviewHistory] = useState(() => createPdfReviewHistory());
   const [isPdfExporting, setIsPdfExporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dictionaryInputRef = useRef<HTMLInputElement>(null);
@@ -211,12 +217,32 @@ export default function Home() {
     ? `第 ${parseProgress.currentPage} / ${parseProgress.totalPages} 頁`
     : "正在建立 PDF 工作區";
   const pdfPageCount = parsedDocument?.fileType === "pdf" ? Math.max(1, parsedDocument.pageCount ?? 1) : 1;
+  const pdfReviewState = pdfReviewHistory.entries[pdfReviewHistory.index];
+  const canUndoPdfReview = pdfReviewHistory.index > 0;
+  const canRedoPdfReview = pdfReviewHistory.index < pdfReviewHistory.entries.length - 1;
 
   useEffect(() => {
     const handleFullscreenChange = () => setIsPdfPreviewFullscreen(document.fullscreenElement?.id === "pdf-preview-dialog");
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, []);
+
+  useEffect(() => {
+    const handlePdfReviewShortcut = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!pdfPreviewOpen || !manualReviewMode || target?.closest("input, textarea, select, [contenteditable='true']") || !(event.metaKey || event.ctrlKey)) return;
+      const key = event.key.toLowerCase();
+      if (key === "z") {
+        event.preventDefault();
+        setPdfReviewHistory((history) => event.shiftKey ? redoPdfReviewHistory(history) : undoPdfReviewHistory(history));
+      } else if (key === "y") {
+        event.preventDefault();
+        setPdfReviewHistory((history) => redoPdfReviewHistory(history));
+      }
+    };
+    window.addEventListener("keydown", handlePdfReviewShortcut);
+    return () => window.removeEventListener("keydown", handlePdfReviewShortcut);
+  }, [manualReviewMode, pdfPreviewOpen]);
 
   const processText = () => {
     if (!input.trim()) {
@@ -236,8 +262,7 @@ export default function Home() {
     parseControllerRef.current = controller;
     setIsParsing(true);
     setSourcePdfFile(null);
-    setPdfRedactionEdits([]);
-    setHiddenPdfRedactionIds([]);
+    setPdfReviewHistory(createPdfReviewHistory());
     setManualReviewMode(false);
     setIsCancelling(false);
     setParseError("");
@@ -309,8 +334,7 @@ export default function Home() {
     setPdfPreviewOpen(false);
     setPdfPreviewPage(1);
     setManualReviewMode(false);
-    setPdfRedactionEdits([]);
-    setHiddenPdfRedactionIds([]);
+    setPdfReviewHistory(createPdfReviewHistory());
     if (document.fullscreenElement) void document.exitFullscreen();
     setIsPdfExporting(false);
     setCustomInput("");
@@ -375,8 +399,8 @@ export default function Home() {
         sourcePdfFile,
         enabledRules,
         customTerms,
-        redactionEdits: pdfRedactionEdits,
-        hiddenRedactionIds: hiddenPdfRedactionIds,
+        redactionEdits: pdfReviewState.redactionEdits,
+        hiddenRedactionIds: pdfReviewState.hiddenRedactionIds,
       });
       setPdfPreviewOpen(false);
       toast.success("PDF 已成功下載。", {
@@ -408,8 +432,7 @@ export default function Home() {
     setFileName("");
     setParsedDocument(null);
     setSourcePdfFile(null);
-    setPdfRedactionEdits([]);
-    setHiddenPdfRedactionIds([]);
+    setPdfReviewHistory(createPdfReviewHistory());
     setManualReviewMode(false);
     setParseError("");
     setParseProgress(null);
@@ -581,7 +604,7 @@ export default function Home() {
             <DialogTitle>下載前檢查原始版面</DialogTitle>
             <DialogDescription>左側保留原始 PDF 的版面、圖片與字型；右側在相同頁面上標示去識別化後的遮罩。請逐頁確認後再下載。</DialogDescription>
           </DialogHeader>
-          <div className="pdf-preview-dialog__meta"><span><FileOutput size={14} /> {fileName || "文字工作區"}</span><span>{sourcePdfFile ? `第 ${pdfPreviewPage} / ${pdfPageCount} 頁 · ` : ""}{resultStats.total} 處自動替換{pdfRedactionEdits.filter((item) => item.origin === "manual").length > 0 ? ` · ${pdfRedactionEdits.filter((item) => item.origin === "manual").length} 處人工遮罩` : ""}</span></div>
+          <div className="pdf-preview-dialog__meta"><span><FileOutput size={14} /> {fileName || "文字工作區"}</span><span>{sourcePdfFile ? `第 ${pdfPreviewPage} / ${pdfPageCount} 頁 · ` : ""}{resultStats.total} 處自動替換{pdfReviewState.redactionEdits.filter((item) => item.origin === "manual").length > 0 ? ` · ${pdfReviewState.redactionEdits.filter((item) => item.origin === "manual").length} 處人工遮罩` : ""}</span></div>
           {sourcePdfFile ? (
             <>
               <div className="pdf-preview-dialog__page-controls" aria-label="PDF 頁面切換與覆核工具">
@@ -592,10 +615,12 @@ export default function Home() {
                 </div>
                 <div className="pdf-preview-dialog__page-actions">
                   <button type="button" className={`pdf-preview-dialog__mode ${manualReviewMode ? "pdf-preview-dialog__mode--active" : ""}`} onClick={() => setManualReviewMode((enabled) => !enabled)} disabled={isPdfExporting} aria-pressed={manualReviewMode}><Pencil size={14} /> {manualReviewMode ? "覆核編輯中" : "人工覆核"}</button>
+                  <button type="button" className="pdf-preview-dialog__history-action" onClick={() => setPdfReviewHistory((history) => undoPdfReviewHistory(history))} disabled={isPdfExporting || !canUndoPdfReview} aria-label="復原上一個遮罩編輯" title="復原（Ctrl 或 Command + Z）"><Undo2 size={15} /><span>復原</span></button>
+                  <button type="button" className="pdf-preview-dialog__history-action" onClick={() => setPdfReviewHistory((history) => redoPdfReviewHistory(history))} disabled={isPdfExporting || !canRedoPdfReview} aria-label="重做下一個遮罩編輯" title="重做（Ctrl 或 Command + Shift + Z）"><Redo2 size={15} /><span>重做</span></button>
                   <button type="button" className="pdf-preview-dialog__fullscreen" onClick={togglePdfPreviewFullscreen} disabled={isPdfExporting} aria-label={isPdfPreviewFullscreen ? "離開全螢幕模式" : "開啟全螢幕模式"} title={isPdfPreviewFullscreen ? "離開全螢幕（Esc）" : "全螢幕檢閱"}>{isPdfPreviewFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}<span>{isPdfPreviewFullscreen ? "離開全螢幕" : "全螢幕"}</span></button>
                 </div>
               </div>
-              <PdfVisualCompare file={sourcePdfFile} pageNumber={pdfPreviewPage} enabledRules={enabledRules} customTerms={customTerms} manualReviewMode={manualReviewMode} redactionEdits={pdfRedactionEdits} hiddenRedactionIds={hiddenPdfRedactionIds} onRedactionEditsChange={setPdfRedactionEdits} onHiddenRedactionIdsChange={setHiddenPdfRedactionIds} />
+              <PdfVisualCompare file={sourcePdfFile} pageNumber={pdfPreviewPage} enabledRules={enabledRules} customTerms={customTerms} manualReviewMode={manualReviewMode} reviewState={pdfReviewState} onReviewStateChange={(state) => setPdfReviewHistory((history) => recordPdfReviewState(history, state))} />
             </>
           ) : <pre className="pdf-preview-dialog__document" aria-label="去識別化 PDF 內容預覽">{result}</pre>}
           {isPdfExporting && <div className="pdf-preview-dialog__status" role="status" aria-live="polite"><LoaderCircle className="spin" size={16} /><span><strong>正在產生 PDF…</strong><small>檔案完全在瀏覽器本機處理，請稍候。</small></span></div>}

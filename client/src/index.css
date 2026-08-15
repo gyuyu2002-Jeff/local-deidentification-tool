@@ -187,12 +187,13 @@
   .pdf-preview-dialog__page-controls label { display: inline-flex; align-items: center; gap: 6px; }
   .pdf-preview-dialog__page-controls input { width: 42px; border: 1px solid rgba(32, 51, 43, 0.24); outline: 0; padding: 6px 4px; background: var(--paper); color: var(--ink); text-align: center; font: 700 10px "IBM Plex Mono", monospace; }
   .pdf-preview-dialog__page-controls input:focus { border-color: var(--amber-deep); box-shadow: 0 0 0 2px rgba(200, 148, 62, 0.14); }
-  .pdf-preview-dialog__mode, .pdf-preview-dialog__fullscreen { display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 7px 9px; border: 1px solid rgba(32, 51, 43, 0.24); background: rgba(255, 253, 248, 0.72); color: var(--ink); font: 700 10px "Noto Sans TC", sans-serif; transition: background 160ms var(--ease-out), border-color 160ms var(--ease-out), color 160ms var(--ease-out), transform 160ms var(--ease-out); }
-  .pdf-preview-dialog__mode:hover:not(:disabled), .pdf-preview-dialog__fullscreen:hover:not(:disabled) { border-color: var(--ink); background: var(--ink); color: var(--paper); }
-  .pdf-preview-dialog__mode:active:not(:disabled), .pdf-preview-dialog__fullscreen:active:not(:disabled) { transform: scale(0.97); }
+  .pdf-preview-dialog__mode, .pdf-preview-dialog__fullscreen, .pdf-preview-dialog__history-action { display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 7px 9px; border: 1px solid rgba(32, 51, 43, 0.24); background: rgba(255, 253, 248, 0.72); color: var(--ink); font: 700 10px "Noto Sans TC", sans-serif; transition: background 160ms var(--ease-out), border-color 160ms var(--ease-out), color 160ms var(--ease-out), transform 160ms var(--ease-out); }
+  .pdf-preview-dialog__history-action { min-width: 0 !important; }
+  .pdf-preview-dialog__mode:hover:not(:disabled), .pdf-preview-dialog__fullscreen:hover:not(:disabled), .pdf-preview-dialog__history-action:hover:not(:disabled) { border-color: var(--ink); background: var(--ink); color: var(--paper); }
+  .pdf-preview-dialog__mode:active:not(:disabled), .pdf-preview-dialog__fullscreen:active:not(:disabled), .pdf-preview-dialog__history-action:active:not(:disabled) { transform: scale(0.97); }
   .pdf-preview-dialog__mode--active { border-color: var(--amber); background: rgba(200, 148, 62, 0.15); color: var(--ink); }
-  .pdf-preview-dialog__fullscreen svg, .pdf-preview-dialog__mode svg { color: var(--amber-deep); }
-  .pdf-preview-dialog__mode:hover:not(:disabled) svg, .pdf-preview-dialog__fullscreen:hover:not(:disabled) svg { color: var(--prism-gold); }
+  .pdf-preview-dialog__fullscreen svg, .pdf-preview-dialog__mode svg, .pdf-preview-dialog__history-action svg { color: var(--amber-deep); }
+  .pdf-preview-dialog__mode:hover:not(:disabled) svg, .pdf-preview-dialog__fullscreen:hover:not(:disabled) svg, .pdf-preview-dialog__history-action:hover:not(:disabled) svg { color: var(--prism-gold); }
   .pdf-visual-compare { position: relative; max-height: min(64vh, 720px); overflow: auto; padding: 18px 24px 22px; background: #e8e2d7; }
   .pdf-visual-compare__loading { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: center; gap: 8px; width: fit-content; margin: 0 auto 12px; padding: 7px 10px; background: var(--ink); color: var(--paper); box-shadow: 0 8px 20px rgba(20, 34, 28, 0.15); font: 10px "IBM Plex Mono", "Noto Sans TC", monospace; }
   .pdf-visual-compare__loading svg { color: var(--amber); }
@@ -394,6 +395,7 @@
     .pdf-preview-dialog__page-controls { align-items: flex-start; flex-direction: column; gap: 9px; padding: 10px 18px; }
     .pdf-preview-dialog__page-navigation, .pdf-preview-dialog__page-actions { width: 100%; justify-content: space-between; gap: 7px; }
     .pdf-preview-dialog__page-controls button { min-width: 0; padding: 7px; font-size: 9px; }
+    .pdf-preview-dialog__history-action span { display: none; }
     .pdf-preview-dialog__page-controls label { gap: 4px; }
     .pdf-visual-compare { max-height: 56vh; padding: 14px 18px 18px; }
     .pdf-visual-compare__review-hint { align-items: flex-start; flex-direction: column; }
