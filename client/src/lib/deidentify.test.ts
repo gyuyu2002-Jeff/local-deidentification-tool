@@ -1,7 +1,7 @@
 /* Design philosophy: quiet archival utility — tests protect predictable, auditable transformations. */
 
 import { describe, expect, it } from "vitest";
-import { DEFAULT_RULES, deidentifyText } from "./deidentify";
+import { DEFAULT_RULES, deidentifyText, isValidTaiwanUniformNumber } from "./deidentify";
 
 describe("deidentifyText", () => {
   it("replaces enabled sensitive patterns and reports counts", () => {
@@ -52,16 +52,41 @@ describe("deidentifyText", () => {
     expect(output.total).toBe(2);
   });
 
-  it("keeps the eight default rules in location-first order", () => {
+  it("replaces a valid uniform number but ignores an invalid eight-digit value", () => {
+    const output = deidentifyText("公司統編：04595257；無效數字：12345678", ["uniformNumber"], []);
+
+    expect(output.text).toBe("公司統編：[UNIFORM_NUMBER]；無效數字：12345678");
+    expect(output.counts.uniformNumber).toBe(1);
+    expect(output.total).toBe(1);
+    expect(isValidTaiwanUniformNumber("04595257")).toBe(true);
+    expect(isValidTaiwanUniformNumber("12345678")).toBe(false);
+  });
+
+  it("replaces standalone numbers without overriding more specific enabled rules", () => {
+    const output = deidentifyText(
+      "合約金額 125,000.50；頁碼 12；統編 04595257；電話 0912-345-678",
+      ["uniformNumber", "phone", "number"],
+      [],
+    );
+
+    expect(output.text).toBe("合約金額 [NUMBER]；頁碼 12；統編 [UNIFORM_NUMBER]；電話 [PHONE]");
+    expect(output.counts.number).toBe(1);
+    expect(output.counts.uniformNumber).toBe(1);
+    expect(output.counts.phone).toBe(1);
+  });
+
+  it("keeps the ten default rules in location-first and number-last order", () => {
     expect(DEFAULT_RULES.map((rule) => rule.id)).toEqual([
       "address",
       "placeName",
       "region",
       "taiwanId",
+      "uniformNumber",
       "email",
       "phone",
       "date",
       "ip",
+      "number",
     ]);
   });
 });
