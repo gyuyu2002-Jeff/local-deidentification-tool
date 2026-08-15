@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { createAutomaticRedactions, resolvePdfRedactions, type PdfRedaction } from "./pdf-redactions";
+import {
+  createAutomaticRedactions,
+  createPdfReviewHistory,
+  recordPdfReviewState,
+  redoPdfReviewHistory,
+  resizePdfRedaction,
+  resolvePdfRedactions,
+  undoPdfReviewHistory,
+  type PdfRedaction,
+} from "./pdf-redactions";
 
 describe("PDF 覆核遮罩資料模型", () => {
   const automatic: PdfRedaction = {
@@ -31,5 +40,23 @@ describe("PDF 覆核遮罩資料模型", () => {
 
   it("會在人工刪除自動遮罩後排除該位置", () => {
     expect(resolvePdfRedactions([automatic], [], [automatic.id])).toEqual([]);
+  });
+
+  it("會由縮放控制點限制遮罩在頁面內，且保留最小尺寸", () => {
+    const resized = resizePdfRedaction(automatic, "nw", { x: 76, y: 70 }, { width: 120, height: 160 }, 8);
+    expect(resized).toMatchObject({ x: 72, y: 64, width: 8, height: 8 });
+  });
+
+  it("會保存遮罩工作階段歷程，並可復原、重做與在復原後截斷舊分支", () => {
+    const initial = { redactionEdits: [], hiddenRedactionIds: [] };
+    const moved = { redactionEdits: [{ ...automatic, x: 20 }], hiddenRedactionIds: [] };
+    const hidden = { redactionEdits: [{ ...automatic, x: 20 }], hiddenRedactionIds: [automatic.id] };
+    const history = recordPdfReviewState(recordPdfReviewState(createPdfReviewHistory(initial), moved), hidden);
+    expect(undoPdfReviewHistory(history).entries[1]).toEqual(moved);
+    expect(redoPdfReviewHistory(undoPdfReviewHistory(history)).entries[2]).toEqual(hidden);
+    const forked = recordPdfReviewState(undoPdfReviewHistory(history), initial);
+    expect(forked).toMatchObject({ index: 2 });
+    expect(forked.entries).toHaveLength(3);
+    expect(forked.entries[2]).toEqual(initial);
   });
 });

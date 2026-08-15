@@ -7,8 +7,11 @@ import {
   createAutomaticRedactions,
   drawPdfRedactions,
   isTextItem,
+  resizePdfRedaction,
   resolvePdfRedactions,
   type PdfRedaction,
+  type PdfRedactionResizeHandle,
+  type PdfReviewState,
 } from "@/lib/pdf-redactions";
 
 type PdfVisualCompareProps = {
@@ -17,10 +20,8 @@ type PdfVisualCompareProps = {
   enabledRules: RuleId[];
   customTerms: string[];
   manualReviewMode: boolean;
-  redactionEdits: PdfRedaction[];
-  hiddenRedactionIds: string[];
-  onRedactionEditsChange: (redactions: PdfRedaction[]) => void;
-  onHiddenRedactionIdsChange: (ids: string[]) => void;
+  reviewState: PdfReviewState;
+  onReviewStateChange: (state: PdfReviewState) => void;
 };
 
 type CanvasPageState = {
@@ -31,12 +32,13 @@ type CanvasPageState = {
 };
 
 type PointerSession = {
-  mode: "drawing" | "moving";
+  mode: "drawing" | "moving" | "resizing";
   startX: number;
   startY: number;
   offsetX?: number;
   offsetY?: number;
   target?: PdfRedaction;
+  resizeHandle?: PdfRedactionResizeHandle;
 };
 
 const PREVIEW_SCALE = 1.35;
@@ -54,17 +56,14 @@ export default function PdfVisualCompare({
   enabledRules,
   customTerms,
   manualReviewMode,
-  redactionEdits,
-  hiddenRedactionIds,
-  onRedactionEditsChange,
-  onHiddenRedactionIdsChange,
+  reviewState,
+  onReviewStateChange,
 }: PdfVisualCompareProps) {
   const originalCanvasRef = useRef<HTMLCanvasElement>(null);
   const revisedCanvasRef = useRef<HTMLCanvasElement>(null);
   const pageStateRef = useRef<CanvasPageState | null>(null);
   const pointerSessionRef = useRef<PointerSession | null>(null);
-  const redactionEditsRef = useRef(redactionEdits);
-  const hiddenRedactionIdsRef = useRef(hiddenRedactionIds);
+  const reviewStateRef = useRef(reviewState);
   const selectedIdRef = useRef<string | null>(null);
   const draftRef = useRef<PdfRedaction | null>(null);
   const [isRendering, setIsRendering] = useState(true);
@@ -72,9 +71,9 @@ export default function PdfVisualCompare({
   const [redactionCount, setRedactionCount] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<PdfRedaction | null>(null);
+  const [canvasCursor, setCanvasCursor] = useState("crosshair");
 
-  redactionEditsRef.current = redactionEdits;
-  hiddenRedactionIdsRef.current = hiddenRedactionIds;
+  reviewStateRef.current = reviewState;
   selectedIdRef.current = selectedId;
   draftRef.current = draft;
 
@@ -85,8 +84,8 @@ export default function PdfVisualCompare({
     if (!originalCanvas || !revisedCanvas || !pageState) return;
     const context = revisedCanvas.getContext("2d");
     if (!context) return;
-    const pageEdits = redactionEditsRef.current.filter((item) => item.pageNumber === pageNumber);
-    const resolved = resolvePdfRedactions(pageState.automaticRedactions, pageEdits, hiddenRedactionIdsRef.current);
+    const pageEdits = reviewStateRef.current.redactionEdits.filter((item) => item.pageNumber === pageNumber);
+    const resolved = resolvePdfRedactions(pageState.automaticRedactions, pageEdits, reviewStateRef.current.hiddenRedactionIds);
     context.clearRect(0, 0, revisedCanvas.width, revisedCanvas.height);
     context.drawImage(originalCanvas, 0, 0);
     drawPdfRedactions(context, resolved, pageState.scale, selectedIdRef.current, draftRef.current);
@@ -161,12 +160,28 @@ export default function PdfVisualCompare({
 
   useEffect(() => {
     refreshRevisedCanvas();
-  }, [draft, hiddenRedactionIds, redactionEdits, selectedId, refreshRevisedCanvas]);
+  }, [draft, reviewState, selectedId, refreshRevisedCanvas]);
 
   const getCurrentRedactions = () => {
     const pageState = pageStateRef.current;
-    const pageEdits = redactionEditsRef.current.filter((item) => item.pageNumber === pageNumber);
-    return pageState ? resolvePdfRedactions(pageState.automaticRedactions, pageEdits, hiddenRedactionIdsRef.current) : [];
+    const pageEdits = reviewStateRef.current.redactionEdits.filter((item) => item.pageNumber === pageNumber);
+    return pageState ? resolvePdfRedactions(pageState.automaticRedactions, pageEdits, reviewStateRef.current.hiddenRedactionIds) : [];
+  };
+
+  const getResizeHandle = (redaction: PdfRedaction, point: { x: number; y: number }): PdfRedactionResizeHandle | null => {
+    const tolerance = Math.min(10, Math.max(5, Math.min(redaction.width, redaction.height) * 0.28));
+    const near = (x: number, y: number) => Math.abs(point.x - x) <= tolerance && Math.abs(point.y - y) <= tolerance;
+    if (near(redaction.x, redaction.y)) return "nw";
+    if (near(redaction.x + redaction.width, redaction.y)) return "ne";
+    if (near(redaction.x + redaction.width, redaction.y + redaction.height)) return "se";
+    if (near(redaction.x, redaction.y + redaction.height)) return "sw";
+    return null;
+  };
+
+  const cursorForHandle = (handle: PdfRedactionResizeHandle | null) => {
+    if (handle === "nw" || handle === "se") return "nwse-resize";
+    if (handle === "ne" || handle === "sw") return "nesw-resize";
+    return "crosshair";
   };
 
   const pointFromEvent = (event: PointerEvent<HTMLCanvasElement>) => {
@@ -196,10 +211,12 @@ export default function PdfVisualCompare({
     const selected = getCurrentRedactions().find((item) => item.id === selectedIdRef.current);
     if (!selected) return;
     if (selected.origin === "automatic") {
-      onHiddenRedactionIdsChange(Array.from(new Set([...hiddenRedactionIdsRef.current, selected.id])));
-      onRedactionEditsChange(redactionEditsRef.current.filter((item) => item.id !== selected.id));
+      onReviewStateChange({
+        redactionEdits: reviewStateRef.current.redactionEdits.filter((item) => item.id !== selected.id),
+        hiddenRedactionIds: Array.from(new Set([...reviewStateRef.current.hiddenRedactionIds, selected.id])),
+      });
     } else {
-      onRedactionEditsChange(redactionEditsRef.current.filter((item) => item.id !== selected.id));
+      onReviewStateChange({ ...reviewStateRef.current, redactionEdits: reviewStateRef.current.redactionEdits.filter((item) => item.id !== selected.id) });
     }
     setSelectedId(null);
     setDraft(null);
@@ -209,9 +226,35 @@ export default function PdfVisualCompare({
     const handleKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       if (!manualReviewMode || !selectedIdRef.current || target?.closest("input, textarea, select, [contenteditable='true']")) return;
+      const selected = getCurrentRedactions().find((item) => item.id === selectedIdRef.current);
+      if (!selected) return;
       if (event.key === "Delete" || event.key === "Backspace") {
         event.preventDefault();
         deleteSelectedRedaction();
+      }
+      const moveBy = event.altKey ? 10 : 2;
+      if (event.key.startsWith("Arrow")) {
+        event.preventDefault();
+        const pageState = pageStateRef.current;
+        if (!pageState) return;
+        const next = event.shiftKey
+          ? (() => {
+              const point = event.key === "ArrowLeft"
+                ? { x: selected.x - moveBy, y: selected.y }
+                : event.key === "ArrowRight"
+                  ? { x: selected.x + selected.width + moveBy, y: selected.y }
+                  : event.key === "ArrowUp"
+                    ? { x: selected.x, y: selected.y - moveBy }
+                    : { x: selected.x, y: selected.y + selected.height + moveBy };
+              const handle: PdfRedactionResizeHandle = event.key === "ArrowLeft" ? "nw" : event.key === "ArrowRight" ? "se" : event.key === "ArrowUp" ? "nw" : "se";
+              return resizePdfRedaction(selected, handle, point, { width: pageState.width / pageState.scale, height: pageState.height / pageState.scale }, MIN_REDACTION_SIZE);
+            })()
+          : clampRedaction({
+              ...selected,
+              x: selected.x + (event.key === "ArrowLeft" ? -moveBy : event.key === "ArrowRight" ? moveBy : 0),
+              y: selected.y + (event.key === "ArrowUp" ? -moveBy : event.key === "ArrowDown" ? moveBy : 0),
+            });
+        onReviewStateChange({ ...reviewStateRef.current, redactionEdits: [...reviewStateRef.current.redactionEdits.filter((item) => item.id !== selected.id), next] });
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -223,26 +266,46 @@ export default function PdfVisualCompare({
     const point = pointFromEvent(event);
     if (!point) return;
     event.currentTarget.setPointerCapture(event.pointerId);
+    const selected = getCurrentRedactions().find((item) => item.id === selectedIdRef.current);
+    const resizeHandle = selected ? getResizeHandle(selected, point) : null;
+    if (selected && resizeHandle) {
+      setCanvasCursor(cursorForHandle(resizeHandle));
+      pointerSessionRef.current = { mode: "resizing", startX: point.x, startY: point.y, target: selected, resizeHandle };
+      return;
+    }
     const hit = [...getCurrentRedactions()].reverse().find((item) => point.x >= item.x && point.x <= item.x + item.width && point.y >= item.y && point.y <= item.y + item.height);
     if (hit) {
       setSelectedId(hit.id);
+      setCanvasCursor("grabbing");
       pointerSessionRef.current = { mode: "moving", startX: point.x, startY: point.y, offsetX: point.x - hit.x, offsetY: point.y - hit.y, target: hit };
       return;
     }
     setSelectedId(null);
+    setCanvasCursor("crosshair");
     pointerSessionRef.current = { mode: "drawing", startX: point.x, startY: point.y };
     setDraft({ id: "draft", pageNumber, x: point.x, y: point.y, width: 0, height: 0, label: "手動遮罩", origin: "manual" });
   };
 
   const handlePointerMove = (event: PointerEvent<HTMLCanvasElement>) => {
     const session = pointerSessionRef.current;
-    if (!manualReviewMode || !session) return;
+    if (!manualReviewMode) return;
     const point = pointFromEvent(event);
     if (!point) return;
+    if (!session) {
+      const selected = getCurrentRedactions().find((item) => item.id === selectedIdRef.current);
+      setCanvasCursor(cursorForHandle(selected ? getResizeHandle(selected, point) : null));
+      return;
+    }
     if (session.mode === "drawing") {
       setDraft({ id: "draft", pageNumber, x: Math.min(session.startX, point.x), y: Math.min(session.startY, point.y), width: Math.abs(point.x - session.startX), height: Math.abs(point.y - session.startY), label: "手動遮罩", origin: "manual" });
     } else if (session.target) {
-      setDraft(clampRedaction({ ...session.target, x: point.x - (session.offsetX ?? 0), y: point.y - (session.offsetY ?? 0) }));
+      if (session.mode === "resizing" && session.resizeHandle) {
+        const pageState = pageStateRef.current;
+        if (!pageState) return;
+        setDraft(resizePdfRedaction(session.target, session.resizeHandle, point, { width: pageState.width / pageState.scale, height: pageState.height / pageState.scale }, MIN_REDACTION_SIZE));
+      } else {
+        setDraft(clampRedaction({ ...session.target, x: point.x - (session.offsetX ?? 0), y: point.y - (session.offsetY ?? 0) }));
+      }
     }
   };
 
@@ -253,15 +316,16 @@ export default function PdfVisualCompare({
     const nextDraft = draftRef.current;
     if (session.mode === "drawing" && nextDraft && nextDraft.width >= MIN_REDACTION_SIZE && nextDraft.height >= MIN_REDACTION_SIZE) {
       const next = { ...nextDraft, id: createManualId() };
-      onRedactionEditsChange([...redactionEditsRef.current, next]);
+      onReviewStateChange({ ...reviewStateRef.current, redactionEdits: [...reviewStateRef.current.redactionEdits, next] });
       setSelectedId(next.id);
     }
-    if (session.mode === "moving" && nextDraft && session.target) {
-      onRedactionEditsChange([...redactionEditsRef.current.filter((item) => item.id !== session.target?.id), nextDraft]);
+    if ((session.mode === "moving" || session.mode === "resizing") && nextDraft && session.target) {
+      onReviewStateChange({ ...reviewStateRef.current, redactionEdits: [...reviewStateRef.current.redactionEdits.filter((item) => item.id !== session.target?.id), nextDraft] });
       setSelectedId(nextDraft.id);
     }
     pointerSessionRef.current = null;
     setDraft(null);
+    setCanvasCursor("crosshair");
   };
 
   const selectedRedaction = getCurrentRedactions().find((item) => item.id === selectedId);
@@ -269,7 +333,7 @@ export default function PdfVisualCompare({
   return (
     <section className={`pdf-visual-compare ${manualReviewMode ? "pdf-visual-compare--editing" : ""}`} aria-label={`PDF 第 ${pageNumber} 頁原始與去識別化後的視覺比較`}>
       {isRendering && <div className="pdf-visual-compare__loading" role="status" aria-live="polite"><LoaderCircle className="spin" size={17} /> 正在本機渲染第 {pageNumber} 頁…</div>}
-      {manualReviewMode && <div className="pdf-visual-compare__review-hint" role="status"><span><Pencil size={14} /> 人工覆核：在右側頁面拖曳可新增遮罩；拖曳既有遮罩可移動。</span>{selectedRedaction && <button type="button" onClick={deleteSelectedRedaction}><Trash2 size={13} /> 刪除選取遮罩</button>}</div>}
+      {manualReviewMode && <div className="pdf-visual-compare__review-hint" role="status"><span><Pencil size={14} /> 人工覆核：拖曳新增或移動遮罩；選取後可拖曳四角縮放，方向鍵移動，Shift＋方向鍵調整尺寸。</span>{selectedRedaction && <button type="button" onClick={deleteSelectedRedaction}><Trash2 size={13} /> 刪除選取遮罩</button>}</div>}
       <div className="pdf-visual-compare__grid" aria-busy={isRendering}>
         <figure className="pdf-page-sheet">
           <figcaption><Eye size={14} /> 去識別化前</figcaption>
@@ -277,7 +341,7 @@ export default function PdfVisualCompare({
         </figure>
         <figure className="pdf-page-sheet pdf-page-sheet--revised">
           <figcaption><EyeOff size={14} /> 去識別化後 {redactionCount > 0 && <span>{redactionCount} 處遮罩</span>}</figcaption>
-          <canvas ref={revisedCanvasRef} tabIndex={manualReviewMode ? 0 : -1} role="img" aria-label={manualReviewMode ? "可人工覆核的去識別化 PDF 頁面" : "去識別化 PDF 頁面"} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp} />
+          <canvas ref={revisedCanvasRef} tabIndex={manualReviewMode ? 0 : -1} role="img" aria-label={manualReviewMode ? "可人工覆核的去識別化 PDF 頁面；選取遮罩後可拖曳四角縮放，方向鍵移動，Shift 加方向鍵調整尺寸" : "去識別化 PDF 頁面"} style={manualReviewMode ? { cursor: canvasCursor } : undefined} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp} onPointerLeave={() => !pointerSessionRef.current && setCanvasCursor("crosshair")} />
         </figure>
       </div>
       {notice && <p className="pdf-visual-compare__notice">{notice.trim()}</p>}
