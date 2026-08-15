@@ -7,6 +7,7 @@ import {
   ArrowDownToLine,
   Check,
   CheckCircle2,
+  ChevronLeft,
   ChevronRight,
   Clipboard,
   FileCheck2,
@@ -30,6 +31,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import DiffView from "@/components/DiffView";
+import PdfVisualCompare from "@/components/PdfVisualCompare";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -163,6 +165,7 @@ export default function Home() {
   const [customInput, setCustomInput] = useState("");
   const [fileName, setFileName] = useState("");
   const [parsedDocument, setParsedDocument] = useState<ParsedDocument | null>(null);
+  const [sourcePdfFile, setSourcePdfFile] = useState<File | null>(null);
   const [isParsing, setIsParsing] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [parseProgress, setParseProgress] = useState<DocumentParseProgress | null>(null);
@@ -173,6 +176,7 @@ export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false);
+  const [pdfPreviewPage, setPdfPreviewPage] = useState(1);
   const [isPdfExporting, setIsPdfExporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dictionaryInputRef = useRef<HTMLInputElement>(null);
@@ -198,6 +202,7 @@ export default function Home() {
   const progressPageLabel = parseProgress && parseProgress.totalPages > 0
     ? `第 ${parseProgress.currentPage} / ${parseProgress.totalPages} 頁`
     : "正在建立 PDF 工作區";
+  const pdfPageCount = parsedDocument?.fileType === "pdf" ? Math.max(1, parsedDocument.pageCount ?? 1) : 1;
 
   const processText = () => {
     if (!input.trim()) {
@@ -216,6 +221,7 @@ export default function Home() {
     const controller = new AbortController();
     parseControllerRef.current = controller;
     setIsParsing(true);
+    setSourcePdfFile(null);
     setIsCancelling(false);
     setParseError("");
     setParseProgress({ phase: "preparing", currentPage: 0, totalPages: 0, percent: 0, message: "正在準備本機解析", detail: `正在讀取 ${file.name}；掃描 PDF 會逐頁顯示 OCR 進度。` });
@@ -224,6 +230,7 @@ export default function Home() {
       setInput(parsed.text);
       setFileName(file.name);
       setParsedDocument(parsed);
+      if (parsed.fileType === "pdf") setSourcePdfFile(file);
       setResult("");
       setShowDiff(false);
       setActiveStep("rules");
@@ -278,10 +285,12 @@ export default function Home() {
     setResult("");
     setFileName("");
     setParsedDocument(null);
+    setSourcePdfFile(null);
     setParseError("");
     setParseProgress(null);
     setShowDiff(false);
     setPdfPreviewOpen(false);
+    setPdfPreviewPage(1);
     setIsPdfExporting(false);
     setCustomInput("");
     setCustomTerms([]);
@@ -323,6 +332,7 @@ export default function Home() {
     if (!result) return;
     const fileType = parsedDocument?.fileType ?? "text";
     if (fileType === "pdf") {
+      setPdfPreviewPage(1);
       setPdfPreviewOpen(true);
       return;
     }
@@ -356,6 +366,7 @@ export default function Home() {
     setInput(EXAMPLE_TEXT);
     setFileName("");
     setParsedDocument(null);
+    setSourcePdfFile(null);
     setParseError("");
     setParseProgress(null);
     setResult("");
@@ -523,11 +534,20 @@ export default function Home() {
         <DialogContent className="pdf-preview-dialog" aria-busy={isPdfExporting}>
           <DialogHeader className="pdf-preview-dialog__header">
             <span className="pdf-preview-dialog__kicker">PDF / LOCAL PREVIEW</span>
-            <DialogTitle>下載前檢查去識別化結果</DialogTitle>
-            <DialogDescription>以下內容將以目前的去識別化結果產生 PDF。請先確認敏感資訊已被替換，再開始下載。</DialogDescription>
+            <DialogTitle>下載前檢查原始版面</DialogTitle>
+            <DialogDescription>左側保留原始 PDF 的版面、圖片與字型；右側在相同頁面上標示去識別化後的遮罩。請逐頁確認後再下載。</DialogDescription>
           </DialogHeader>
-          <div className="pdf-preview-dialog__meta"><span><FileOutput size={14} /> {fileName || "文字工作區"}</span><span>{countCharacters(result)} 字元 · {resultStats.total} 處替換</span></div>
-          <pre className="pdf-preview-dialog__document" aria-label="去識別化 PDF 內容預覽">{result}</pre>
+          <div className="pdf-preview-dialog__meta"><span><FileOutput size={14} /> {fileName || "文字工作區"}</span><span>{sourcePdfFile ? `第 ${pdfPreviewPage} / ${pdfPageCount} 頁 · ` : ""}{resultStats.total} 處替換</span></div>
+          {sourcePdfFile ? (
+            <>
+              <div className="pdf-preview-dialog__page-controls" aria-label="PDF 頁面切換">
+                <button type="button" onClick={() => setPdfPreviewPage((page) => Math.max(1, page - 1))} disabled={pdfPreviewPage <= 1 || isPdfExporting}><ChevronLeft size={15} /> 上一頁</button>
+                <label>頁碼 <input type="number" min={1} max={pdfPageCount} value={pdfPreviewPage} onChange={(event) => setPdfPreviewPage(Math.min(pdfPageCount, Math.max(1, Number(event.target.value) || 1)))} disabled={isPdfExporting} aria-label="前往 PDF 頁碼" /> <span>/ {pdfPageCount}</span></label>
+                <button type="button" onClick={() => setPdfPreviewPage((page) => Math.min(pdfPageCount, page + 1))} disabled={pdfPreviewPage >= pdfPageCount || isPdfExporting}>下一頁 <ChevronRight size={15} /></button>
+              </div>
+              <PdfVisualCompare file={sourcePdfFile} pageNumber={pdfPreviewPage} enabledRules={enabledRules} customTerms={customTerms} />
+            </>
+          ) : <pre className="pdf-preview-dialog__document" aria-label="去識別化 PDF 內容預覽">{result}</pre>}
           {isPdfExporting && <div className="pdf-preview-dialog__status" role="status" aria-live="polite"><LoaderCircle className="spin" size={16} /><span><strong>正在產生 PDF…</strong><small>檔案完全在瀏覽器本機處理，請稍候。</small></span></div>}
           <DialogFooter className="pdf-preview-dialog__footer">
             <DialogClose asChild><button className="pdf-preview-dialog__back" disabled={isPdfExporting}>返回結果</button></DialogClose>
