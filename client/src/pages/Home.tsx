@@ -88,7 +88,9 @@ Email：ming.wang@example.com
 寄送地址：桃園市桃園區中正路100號5樓
 會議地點：台北101
 服務區域：北部地區
-連線來源：192.168.1.24`;
+連線來源：192.168.1.24
+公司統一編號：04595257
+合約金額：125,000.50`;
 
 const ALL_RULE_IDS = DEFAULT_RULES.map((rule) => rule.id);
 
@@ -533,12 +535,12 @@ export default function Home() {
                 <button className="text-button quick-toggle text-button--quiet" onClick={() => setAllRules(false)} disabled={enabledRules.length === 0}>全不選</button>
               </div>
             </div>
-            <div className="rule-grid">
+            <div className={`rule-grid ${DEFAULT_RULES.length > 8 ? "rule-grid--extended" : ""}`}>
               {DEFAULT_RULES.map((rule) => {
                 const enabled = enabledRules.includes(rule.id);
                 return (
                   <button className={`rule-card ${enabled ? "rule-card--enabled" : ""}`} key={rule.id} onClick={() => toggleRule(rule.id)} aria-pressed={enabled}>
-                    <span className="rule-card__icon">{rule.id === "email" ? "@" : rule.id === "phone" ? "☎" : rule.id === "taiwanId" ? "ID" : rule.id === "date" ? "D" : rule.id === "ip" ? "IP" : rule.id === "address" ? "⌂" : rule.id === "placeName" ? "地" : "區"}</span>
+                    <span className="rule-card__icon">{rule.id === "email" ? "@" : rule.id === "phone" ? "☎" : rule.id === "taiwanId" ? "ID" : rule.id === "uniformNumber" ? "統" : rule.id === "number" ? "#" : rule.id === "date" ? "D" : rule.id === "ip" ? "IP" : rule.id === "address" ? "⌂" : rule.id === "placeName" ? "地" : "區"}</span>
                     <span className="rule-card__text"><strong>{rule.label}</strong><small>{rule.detail}</small></span>
                     <span className="rule-card__check">{enabled ? <Check size={13} /> : <span />}</span>
                   </button>
