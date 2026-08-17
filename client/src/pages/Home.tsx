@@ -510,7 +510,7 @@ export default function Home() {
           <div className="workbench__intro rise-in">
             <div>
               <span className="eyebrow">01 / DATA BOUNDARY · LOCAL ONLY</span>
-              <h1>無意識-<br /><em>去識別化說明。</em></h1>
+              <h1 className="workbench__brand-title"><span>無意識</span><br /><span>去識別化</span><br /><em>工作站</em></h1>
             </div>
             <p className="intro-note">文字、Excel、Word、PDF 與掃描 PDF 會先在瀏覽器端解析，再依選定規則替換；您可在下載前檢視差異與 PDF 版面。</p>
           </div>
