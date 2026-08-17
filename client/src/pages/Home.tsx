@@ -37,6 +37,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import AdSlot from "@/components/AdSlot";
 import DiffView from "@/components/DiffView";
 import PdfVisualCompare from "@/components/PdfVisualCompare";
 import {
@@ -80,6 +81,9 @@ import {
   recordPdfReviewState,
   redoPdfReviewHistory,
   undoPdfReviewHistory,
+  DEFAULT_PDF_REDACTION_COLOR,
+  PDF_REDACTION_COLORS,
+  type PdfRedactionColor,
 } from "@/lib/pdf-redactions";
 
 const EXAMPLE_TEXT = `客戶聯絡人：王小明
@@ -219,6 +223,7 @@ export default function Home() {
   const [pdfPreviewPage, setPdfPreviewPage] = useState(1);
   const [isPdfPreviewFullscreen, setIsPdfPreviewFullscreen] = useState(false);
   const [manualReviewMode, setManualReviewMode] = useState(false);
+  const [selectedPdfRedactionColor, setSelectedPdfRedactionColor] = useState<PdfRedactionColor>(DEFAULT_PDF_REDACTION_COLOR);
   const [pdfReviewHistory, setPdfReviewHistory] = useState(() => createPdfReviewHistory());
   const [isPdfExporting, setIsPdfExporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -441,6 +446,7 @@ export default function Home() {
         customTerms,
         redactionEdits: pdfReviewState.redactionEdits,
         hiddenRedactionIds: pdfReviewState.hiddenRedactionIds,
+        selectedRedactionColor: selectedPdfRedactionColor,
       });
       setPdfPreviewOpen(false);
       toast.success("PDF 已成功下載。", {
@@ -633,6 +639,7 @@ export default function Home() {
 
         <aside className="status-column">
           <PrivacyPanel />
+          <AdSlot placement="status-column" />
           <section className="stats-panel">
             <div className="stats-panel__label"><span className="eyebrow">SESSION NOTES</span><span className="status-line" /></div>
             <div className="stat-row"><span>目前工作區</span><strong>{input ? "已載入" : "空白"}</strong></div>
@@ -683,12 +690,16 @@ export default function Home() {
                 </div>
                 <div className="pdf-preview-dialog__page-actions">
                   <button type="button" className={`pdf-preview-dialog__mode ${manualReviewMode ? "pdf-preview-dialog__mode--active" : ""}`} onClick={() => setManualReviewMode((enabled) => !enabled)} disabled={isPdfExporting} aria-pressed={manualReviewMode}><Pencil size={14} /> {manualReviewMode ? "覆核編輯中" : "人工覆核"}</button>
+                  {manualReviewMode && <div className="pdf-preview-dialog__color-picker" role="group" aria-label="新增人工遮罩顏色">
+                    <span>遮罩色</span>
+                    {(Object.keys(PDF_REDACTION_COLORS) as PdfRedactionColor[]).map((color) => <button type="button" key={color} className={`pdf-preview-dialog__color-swatch pdf-preview-dialog__color-swatch--${color} ${selectedPdfRedactionColor === color ? "pdf-preview-dialog__color-swatch--selected" : ""}`} onClick={() => setSelectedPdfRedactionColor(color)} disabled={isPdfExporting} aria-label={`${color === "blue" ? "藍色" : color === "red" ? "紅色" : "黑色"}遮罩`} aria-pressed={selectedPdfRedactionColor === color} title={`${color === "blue" ? "藍色" : color === "red" ? "紅色" : "黑色"}遮罩`} />)}
+                  </div>}
                   <button type="button" className="pdf-preview-dialog__history-action" onClick={() => setPdfReviewHistory((history) => undoPdfReviewHistory(history))} disabled={isPdfExporting || !canUndoPdfReview} aria-label="復原上一個遮罩編輯" title="復原（Ctrl 或 Command + Z）"><Undo2 size={15} /><span>復原</span></button>
                   <button type="button" className="pdf-preview-dialog__history-action" onClick={() => setPdfReviewHistory((history) => redoPdfReviewHistory(history))} disabled={isPdfExporting || !canRedoPdfReview} aria-label="重做下一個遮罩編輯" title="重做（Ctrl 或 Command + Shift + Z）"><Redo2 size={15} /><span>重做</span></button>
                   <button type="button" className="pdf-preview-dialog__fullscreen" onClick={togglePdfPreviewFullscreen} disabled={isPdfExporting} aria-label={isPdfPreviewFullscreen ? "離開全螢幕模式" : "開啟全螢幕模式"} title={isPdfPreviewFullscreen ? "離開全螢幕（Esc）" : "全螢幕檢閱"}>{isPdfPreviewFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}<span>{isPdfPreviewFullscreen ? "離開全螢幕" : "全螢幕"}</span></button>
                 </div>
               </div>
-              <PdfVisualCompare file={sourcePdfFile} pageNumber={pdfPreviewPage} enabledRules={enabledRules} customTerms={customTerms} manualReviewMode={manualReviewMode} reviewState={pdfReviewState} onReviewStateChange={(state) => setPdfReviewHistory((history) => recordPdfReviewState(history, state))} />
+              <PdfVisualCompare file={sourcePdfFile} pageNumber={pdfPreviewPage} enabledRules={enabledRules} customTerms={customTerms} manualReviewMode={manualReviewMode} selectedRedactionColor={selectedPdfRedactionColor} reviewState={pdfReviewState} onReviewStateChange={(state) => setPdfReviewHistory((history) => recordPdfReviewState(history, state))} />
             </>
           ) : <pre className="pdf-preview-dialog__document" aria-label="去識別化 PDF 內容預覽">{result}</pre>}
           {isPdfExporting && <div className="pdf-preview-dialog__status" role="status" aria-live="polite"><LoaderCircle className="spin" size={16} /><span><strong>正在產生 PDF…</strong><small>檔案完全在瀏覽器本機處理，請稍候。</small></span></div>}

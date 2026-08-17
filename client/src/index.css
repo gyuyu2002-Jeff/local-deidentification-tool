@@ -195,6 +195,14 @@
   .pdf-preview-dialog__mode:hover:not(:disabled), .pdf-preview-dialog__fullscreen:hover:not(:disabled), .pdf-preview-dialog__history-action:hover:not(:disabled) { border-color: var(--ink); background: var(--ink); color: var(--paper); }
   .pdf-preview-dialog__mode:active:not(:disabled), .pdf-preview-dialog__fullscreen:active:not(:disabled), .pdf-preview-dialog__history-action:active:not(:disabled) { transform: scale(0.97); }
   .pdf-preview-dialog__mode--active { border-color: var(--amber); background: rgba(200, 148, 62, 0.15); color: var(--ink); }
+  .pdf-preview-dialog__color-picker { display: inline-flex; align-items: center; gap: 5px; padding: 3px 5px 3px 8px; border: 1px solid rgba(32, 51, 43, 0.2); background: rgba(255, 253, 248, 0.72); color: var(--ink-soft); font: 700 9px "Noto Sans TC", sans-serif; }
+  .pdf-preview-dialog__color-swatch { min-width: 17px !important; width: 17px; height: 17px; padding: 0 !important; border: 2px solid transparent !important; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.48); transition: transform 160ms var(--ease-out), border-color 160ms var(--ease-out), box-shadow 160ms var(--ease-out); }
+  .pdf-preview-dialog__color-swatch:hover:not(:disabled) { border-color: var(--paper) !important; background: inherit; color: inherit; transform: scale(1.1); }
+  .pdf-preview-dialog__color-swatch--blue { background: #2f5b93 !important; }
+  .pdf-preview-dialog__color-swatch--red { background: #b54843 !important; }
+  .pdf-preview-dialog__color-swatch--black { background: #101613 !important; }
+  .pdf-preview-dialog__color-swatch--selected { border-color: var(--amber) !important; box-shadow: 0 0 0 2px rgba(200, 148, 62, 0.28), inset 0 0 0 1px rgba(255, 255, 255, 0.62); }
+  .pdf-preview-dialog__color-swatch:focus-visible { outline: 2px solid #3a77a8; outline-offset: 2px; }
   .pdf-preview-dialog__fullscreen svg, .pdf-preview-dialog__mode svg, .pdf-preview-dialog__history-action svg { color: var(--amber-deep); }
   .pdf-preview-dialog__mode:hover:not(:disabled) svg, .pdf-preview-dialog__fullscreen:hover:not(:disabled) svg, .pdf-preview-dialog__history-action:hover:not(:disabled) svg { color: var(--prism-gold); }
   .pdf-visual-compare { position: relative; max-height: min(64vh, 720px); overflow: auto; padding: 18px 24px 22px; background: #e8e2d7; }
@@ -228,6 +236,11 @@
   .pdf-preview-dialog:fullscreen { width: 100vw; max-width: none !important; height: 100vh; max-height: none; display: grid; grid-template-rows: auto auto auto minmax(0, 1fr) auto; border: 0; border-radius: 0; box-shadow: none; background: var(--paper); }
   .pdf-preview-dialog:fullscreen .pdf-visual-compare { max-height: none; min-height: 0; }
   .pdf-preview-dialog:fullscreen .pdf-visual-compare__grid { max-width: 1720px; width: 100%; margin: 0 auto; }
+  @media (max-width: 760px) {
+    .pdf-preview-dialog__page-controls { align-items: stretch; flex-direction: column; }
+    .pdf-preview-dialog__page-navigation, .pdf-preview-dialog__page-actions { flex-wrap: wrap; }
+    .pdf-preview-dialog__color-picker { margin-left: auto; }
+  }
   .pdf-preview-dialog:fullscreen .pdf-preview-dialog__header { padding-top: 18px; padding-bottom: 13px; }
   .parse-error, .parse-warning { display: flex; align-items: flex-start; gap: 8px; padding: 9px 18px; font-size: 10px; line-height: 1.6; }
   .parse-error { background: rgba(163, 76, 56, 0.1); color: #8b493c; }
@@ -373,6 +386,14 @@
   .privacy-panel__list { display: grid; gap: 9px; margin-top: 22px; padding-top: 16px; border-top: 1px solid rgba(247, 243, 235, 0.16); color: rgba(247, 243, 235, 0.8); font-size: 10px; }
   .privacy-panel__list span { display: flex; align-items: center; gap: 7px; }
   .privacy-panel__list svg { color: var(--amber); }
+  .ad-slot { margin-top: 20px; padding: 13px 14px 14px; border: 1px solid var(--line); background: rgba(247, 243, 235, 0.68); }
+  .ad-slot__label { display: flex; justify-content: space-between; gap: 10px; color: rgba(32, 51, 43, 0.46); font: 700 8px/1.2 "IBM Plex Mono", monospace; letter-spacing: 0.12em; }
+  .ad-slot__index { color: rgba(32, 51, 43, 0.3); }
+  .ad-slot__placeholder, .ad-slot__mount { display: flex; align-items: flex-start; gap: 10px; margin-top: 12px; min-height: 47px; color: var(--ink-soft); }
+  .ad-slot__mark { display: grid; place-items: center; width: 22px; height: 22px; flex: 0 0 auto; border: 1px solid rgba(200, 148, 62, 0.7); color: var(--amber); font: 14px/1 "IBM Plex Mono", monospace; }
+  .ad-slot strong { display: block; color: var(--ink); font-size: 10px; }
+  .ad-slot p { margin: 5px 0 0; color: rgba(32, 51, 43, 0.58); font-size: 9px; line-height: 1.55; }
+  .ad-slot__mount svg { color: var(--amber); flex: 0 0 auto; margin-top: 1px; }
   .stats-panel { margin-top: 28px; padding: 0 1px; }
   .status-line { width: 30px; height: 1px; background: var(--amber); }
   .stats-panel__label { padding-bottom: 12px; border-bottom: 1px solid var(--line); }
@@ -399,6 +420,7 @@
   @media (max-width: 1050px) {
     .workspace { grid-template-columns: 150px minmax(0, 1fr); gap: 32px; }
     .status-column { grid-column: 2; padding-top: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+    .ad-slot { margin-top: 0; }
     .stats-panel, .tip-panel { margin-top: 0; }
     .tip-panel { grid-column: 1 / -1; }
   }
@@ -455,7 +477,7 @@
     .action-row__seal { order: 2; }
     .primary-button { width: 100%; }
     .status-column { display: block; margin-top: 42px; }
-    .stats-panel, .tip-panel { margin-top: 28px; }
+    .ad-slot, .stats-panel, .tip-panel { margin-top: 28px; }
     .site-footer { flex-direction: column; gap: 7px; padding: 18px; }
   }
   @media (max-width: 430px) {

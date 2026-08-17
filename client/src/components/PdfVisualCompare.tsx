@@ -10,6 +10,7 @@ import {
   resizePdfRedaction,
   resolvePdfRedactions,
   type PdfRedaction,
+  type PdfRedactionColor,
   type PdfRedactionResizeHandle,
   type PdfReviewState,
 } from "@/lib/pdf-redactions";
@@ -20,6 +21,7 @@ type PdfVisualCompareProps = {
   enabledRules: RuleId[];
   customTerms: string[];
   manualReviewMode: boolean;
+  selectedRedactionColor: PdfRedactionColor;
   reviewState: PdfReviewState;
   onReviewStateChange: (state: PdfReviewState) => void;
 };
@@ -56,6 +58,7 @@ export default function PdfVisualCompare({
   enabledRules,
   customTerms,
   manualReviewMode,
+  selectedRedactionColor,
   reviewState,
   onReviewStateChange,
 }: PdfVisualCompareProps) {
@@ -135,7 +138,7 @@ export default function PdfVisualCompare({
         if (disposed) return;
 
         const textItems = (await page.getTextContent()).items.filter(isTextItem) as unknown as import("@/lib/pdf-redactions").TextItemLike[];
-        const automaticRedactions = createAutomaticRedactions(textItems, pageNumber, viewport.height / viewport.scale, enabledRules, customTerms);
+        const automaticRedactions = createAutomaticRedactions(textItems, pageNumber, viewport.height / viewport.scale, enabledRules, customTerms, selectedRedactionColor);
         pageStateRef.current = { width, height, scale: viewport.scale, automaticRedactions };
         if (!textItems.length) {
           setNotice("這一頁為掃描影像，原始版面已保留；請以人工覆核模式拖曳新增遮罩。 ");
@@ -283,7 +286,7 @@ export default function PdfVisualCompare({
     setSelectedId(null);
     setCanvasCursor("crosshair");
     pointerSessionRef.current = { mode: "drawing", startX: point.x, startY: point.y };
-    setDraft({ id: "draft", pageNumber, x: point.x, y: point.y, width: 0, height: 0, label: "手動遮罩", origin: "manual" });
+    setDraft({ id: "draft", pageNumber, x: point.x, y: point.y, width: 0, height: 0, label: "", origin: "manual", color: selectedRedactionColor });
   };
 
   const handlePointerMove = (event: PointerEvent<HTMLCanvasElement>) => {
@@ -297,7 +300,7 @@ export default function PdfVisualCompare({
       return;
     }
     if (session.mode === "drawing") {
-      setDraft({ id: "draft", pageNumber, x: Math.min(session.startX, point.x), y: Math.min(session.startY, point.y), width: Math.abs(point.x - session.startX), height: Math.abs(point.y - session.startY), label: "手動遮罩", origin: "manual" });
+      setDraft({ id: "draft", pageNumber, x: Math.min(session.startX, point.x), y: Math.min(session.startY, point.y), width: Math.abs(point.x - session.startX), height: Math.abs(point.y - session.startY), label: "", origin: "manual", color: selectedRedactionColor });
     } else if (session.target) {
       if (session.mode === "resizing" && session.resizeHandle) {
         const pageState = pageStateRef.current;

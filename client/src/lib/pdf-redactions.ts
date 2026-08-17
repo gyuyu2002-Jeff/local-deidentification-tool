@@ -9,6 +9,16 @@ export type TextItemLike = {
   height: number;
 };
 
+export type PdfRedactionColor = "blue" | "red" | "black";
+
+export const DEFAULT_PDF_REDACTION_COLOR: PdfRedactionColor = "blue";
+
+export const PDF_REDACTION_COLORS: Record<PdfRedactionColor, string> = {
+  blue: "#2f5b93",
+  red: "#b54843",
+  black: "#101613",
+};
+
 export type PdfRedaction = {
   id: string;
   pageNumber: number;
@@ -18,6 +28,7 @@ export type PdfRedaction = {
   height: number;
   label: string;
   origin: "automatic" | "manual";
+  color?: PdfRedactionColor;
 };
 
 export type PdfReviewState = {
@@ -115,6 +126,7 @@ export function createAutomaticRedactions(
   pageHeight: number,
   enabledRules: RuleId[],
   customTerms: string[],
+  color: PdfRedactionColor = DEFAULT_PDF_REDACTION_COLOR,
 ) {
   const redactions: PdfRedaction[] = [];
 
@@ -128,7 +140,7 @@ export function createAutomaticRedactions(
     const itemHeight = Math.max(10, Math.abs(item.height || item.transform[3] || 10));
     const width = Math.max(28, item.width + 5);
     const height = Math.max(16, itemHeight + 5);
-    const label = revised.text.replace(/\[[A-Z_]+\]/g, "隱去").slice(0, 16) || "隱去";
+    const label = "";
     redactions.push({
       id: `automatic-${pageNumber}-${index}-${Math.round(rawX * 10)}-${Math.round(rawY * 10)}`,
       pageNumber,
@@ -138,6 +150,7 @@ export function createAutomaticRedactions(
       height,
       label,
       origin: "automatic",
+      color,
     });
   }
 
@@ -166,7 +179,6 @@ export function drawPdfRedactions(
   draft?: PdfRedaction | null,
 ) {
   context.save();
-  context.textBaseline = "middle";
 
   for (const redaction of [...redactions, ...(draft ? [draft] : [])]) {
     const x = redaction.x * scale;
@@ -176,7 +188,7 @@ export function drawPdfRedactions(
     const isDraft = draft?.id === redaction.id;
     const isSelected = selectedId === redaction.id;
 
-    context.fillStyle = isDraft ? "rgba(200, 148, 62, 0.56)" : "rgba(200, 148, 62, 0.93)";
+    context.fillStyle = PDF_REDACTION_COLORS[redaction.color ?? DEFAULT_PDF_REDACTION_COLOR];
     context.fillRect(x, y, width, height);
     if (isSelected || isDraft) {
       context.strokeStyle = "#3a77a8";
@@ -193,11 +205,6 @@ export function drawPdfRedactions(
         context.fillRect(handleX - half, handleY - half, handleSize, handleSize);
         context.strokeRect(handleX - half, handleY - half, handleSize, handleSize);
       }
-    }
-    if (!isDraft && width >= 28 * scale && height >= 15 * scale) {
-      context.fillStyle = "#20332b";
-      context.font = `${Math.max(8, Math.min(12, height * 0.56))}px "Noto Sans TC", "Microsoft JhengHei", sans-serif`;
-      context.fillText(redaction.label || "隱去", x + 5 * scale, y + height / 2 + 0.5, Math.max(10, width - 10 * scale));
     }
   }
 

@@ -4,6 +4,8 @@ import { createPdfOcrWorker, recognizePdfPage, type PdfOcrWorker } from "./ocr";
 import { type RuleId } from "./deidentify";
 import {
   createAutomaticRedactions,
+  DEFAULT_PDF_REDACTION_COLOR,
+  PDF_REDACTION_COLORS,
   drawPdfRedactions,
   isTextItem,
   resolvePdfRedactions,
@@ -43,6 +45,7 @@ export type PdfExportOptions = {
   customTerms?: string[];
   redactionEdits?: PdfRedaction[];
   hiddenRedactionIds?: string[];
+  selectedRedactionColor?: import("./pdf-redactions").PdfRedactionColor;
 };
 
 export class DocumentParseCancelledError extends Error {
@@ -303,52 +306,72 @@ function wrapPdfText(text: string, context: CanvasRenderingContext2D, maxWidth: 
   return lines;
 }
 
+function hexToPdfRgb(hex: string, rgb: (red: number, green: number, blue: number) => unknown) {
+  const normalized = hex.replace("#", "");
+  const value = normalized.length === 3
+    ? normalized.split("").map((digit) => `${digit}${digit}`).join("")
+    : normalized;
+  return rgb(
+    Number.parseInt(value.slice(0, 2), 16) / 255,
+    Number.parseInt(value.slice(2, 4), 16) / 255,
+    Number.parseInt(value.slice(4, 6), 16) / 255,
+  );
+}
+
 async function exportSourcePdfWithRedactions(file: File, fileName: string, options: PdfExportOptions) {
-  const [{ default: jsPDF }, { getDocument, GlobalWorkerOptions }, workerModule] = await Promise.all([
-    import("jspdf"),
+  const [{ PDFDocument, rgb }, { getDocument, GlobalWorkerOptions }, workerModule] = await Promise.all([
+    import("pdf-lib"),
     import("pdfjs-dist"),
     import("pdfjs-dist/build/pdf.worker.mjs?url"),
   ]);
   GlobalWorkerOptions.workerSrc = workerModule.default;
-  const loadingTask = getDocument({ data: new Uint8Array(await file.arrayBuffer()) });
+  const sourceBytes = await file.arrayBuffer();
+  const outputDocument = await PDFDocument.load(sourceBytes);
+  const loadingTask = getDocument({ data: new Uint8Array(sourceBytes) });
   const sourcePdf = await loadingTask.promise;
-  const renderScale = 1.5;
   const redactionEdits = options.redactionEdits ?? [];
   const hiddenRedactionIds = options.hiddenRedactionIds ?? [];
-  let outputPdf: InstanceType<typeof jsPDF> | null = null;
 
   try {
     for (let pageNumber = 1; pageNumber <= sourcePdf.numPages; pageNumber += 1) {
       const page = await sourcePdf.getPage(pageNumber);
-      const viewport = page.getViewport({ scale: renderScale });
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.ceil(viewport.width);
-      canvas.height = Math.ceil(viewport.height);
-      const context = canvas.getContext("2d");
-      if (!context) throw new Error("無法建立 PDF 匯出畫布，請改用其他瀏覽器重試。");
-
-      await page.render({ canvasContext: context, canvas, viewport }).promise;
+      const viewport = page.getViewport({ scale: 1 });
+      const outputPage = outputDocument.getPages()[pageNumber - 1];
+      const pageHeight = outputPage.getHeight();
       const textItems = (await page.getTextContent()).items.filter(isTextItem) as unknown as TextItemLike[];
       const automaticRedactions = createAutomaticRedactions(
         textItems,
         pageNumber,
-        viewport.height / viewport.scale,
+        viewport.height,
         options.enabledRules ?? [],
         options.customTerms ?? [],
+        options.selectedRedactionColor ?? DEFAULT_PDF_REDACTION_COLOR,
       );
       const pageEdits = redactionEdits.filter((item) => item.pageNumber === pageNumber);
       const redactions = resolvePdfRedactions(automaticRedactions, pageEdits, hiddenRedactionIds);
-      drawPdfRedactions(context, redactions, viewport.scale);
 
-      const orientation = viewport.width > viewport.height ? "landscape" : "portrait";
-      if (!outputPdf) {
-        outputPdf = new jsPDF({ unit: "pt", format: [viewport.width, viewport.height], orientation, compress: true });
-      } else {
-        outputPdf.addPage([viewport.width, viewport.height], orientation);
+      for (const redaction of redactions) {
+        const color = PDF_REDACTION_COLORS[redaction.color ?? DEFAULT_PDF_REDACTION_COLOR];
+        outputPage.drawRectangle({
+          x: redaction.x,
+          y: pageHeight - redaction.y - redaction.height,
+          width: redaction.width,
+          height: redaction.height,
+          color: hexToPdfRgb(color, rgb) as ReturnType<typeof rgb>,
+          opacity: 1,
+          borderOpacity: 1,
+        });
       }
-      outputPdf.addImage(canvas.toDataURL("image/jpeg", 0.94), "JPEG", 0, 0, viewport.width, viewport.height, undefined, "FAST");
     }
-    outputPdf?.save(buildBrandedFileName(fileName, "local", "pdf"));
+
+    const outputBytes = await outputDocument.save({ useObjectStreams: true });
+    const blob = new Blob([outputBytes], { type: "application/pdf" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = buildBrandedFileName(fileName, "local", "pdf");
+    link.click();
+    URL.revokeObjectURL(url);
   } finally {
     sourcePdf.cleanup();
   }
