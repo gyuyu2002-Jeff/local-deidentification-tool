@@ -188,3 +188,9 @@
 - [ ] 將藍／紅／黑不透明遮罩顏色與人工覆核、PDF 預覽、下載流程一致整合。
 - [ ] 驗證原始文字、圖片、向量線條與頁面尺寸在輸出後維持品質，並確認遮罩完全遮蔽底層內容。
 - [ ] 完成瀏覽器相容性、型別檢查、單元測試、正式建置與版本保存。
+
+## HMR 錯誤修復（2026-08-17）
+- [x] 檢查 Home.tsx、PdfVisualCompare.tsx 的編譯錯誤與匯入狀態
+- [x] 修正導致 Vite HMR reload failed 的語法或模組問題
+- [x] 執行 pnpm check、Vitest、build:pages 並確認開發伺服器穩定
+- [x] 保存修正版 checkpoint，必要時同步公開 GitHub
