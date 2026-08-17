@@ -182,7 +182,7 @@ function PrivacyPanel() {
         <span className="status-dot" />
         <span>PRIVATE BY DEFAULT</span>
       </div>
-      <h2>資料不離開這台裝置。</h2>
+      <h2>無意識-去識別化說明</h2>
       <p>這是本工作站的資料邊界承諾：比對、替換與掃描 PDF OCR 都在瀏覽器記憶體中執行，不使用後端 API。關閉頁面或按下清除後，工作區內容就不再保留。</p>
       <div className="privacy-panel__list">
         <span><CheckCircle2 size={15} /> 不使用後端 API</span>
