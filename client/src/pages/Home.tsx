@@ -7,6 +7,7 @@ import {
   ArrowDownToLine,
   Check,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clipboard,
@@ -27,6 +28,7 @@ import {
   Pencil,
   Redo2,
   ScanLine,
+  Search,
   ShieldCheck,
   Sparkles,
   Trash2,
@@ -93,6 +95,29 @@ Email：ming.wang@example.com
 合約金額：125,000.50`;
 
 const ALL_RULE_IDS = DEFAULT_RULES.map((rule) => rule.id);
+
+type RuleGroupId = "location" | "identity" | "contact" | "signals";
+
+const RULE_GROUPS: { id: RuleGroupId; label: string; detail: string; ruleIds: RuleId[] }[] = [
+  { id: "location", label: "位置資訊", detail: "地址、地名與區域", ruleIds: ["address", "placeName", "region"] },
+  { id: "identity", label: "身分識別", detail: "姓名、身分證與統編", ruleIds: ["name", "taiwanId", "uniformNumber"] },
+  { id: "contact", label: "聯絡資訊", detail: "電子郵件與電話", ruleIds: ["email", "phone"] },
+  { id: "signals", label: "時間與技術訊號", detail: "日期、IP 與數字", ruleIds: ["date", "ip", "number"] },
+];
+
+const RULE_ICONS: Record<RuleId, string> = {
+  address: "⌂",
+  placeName: "地",
+  region: "區",
+  name: "名",
+  taiwanId: "ID",
+  uniformNumber: "統",
+  email: "@",
+  phone: "☎",
+  date: "D",
+  ip: "IP",
+  number: "#",
+};
 
 type Step = "source" | "rules" | "result";
 
@@ -174,6 +199,8 @@ export default function Home() {
   const [result, setResult] = useState("");
   const [activeStep, setActiveStep] = useState<Step>("source");
   const [enabledRules, setEnabledRules] = useState<RuleId[]>(ALL_RULE_IDS);
+  const [ruleSearch, setRuleSearch] = useState("");
+  const [expandedRuleGroups, setExpandedRuleGroups] = useState<RuleGroupId[]>(["identity"]);
   const [customTerms, setCustomTerms] = useState<string[]>([]);
   const [customInput, setCustomInput] = useState("");
   const [fileName, setFileName] = useState("");
@@ -222,6 +249,17 @@ export default function Home() {
   const pdfReviewState = pdfReviewHistory.entries[pdfReviewHistory.index];
   const canUndoPdfReview = pdfReviewHistory.index > 0;
   const canRedoPdfReview = pdfReviewHistory.index < pdfReviewHistory.entries.length - 1;
+  const visibleRuleGroups = useMemo(() => {
+    const query = ruleSearch.trim().toLocaleLowerCase("zh-TW");
+    return RULE_GROUPS.map((group) => ({
+      ...group,
+      rules: DEFAULT_RULES.filter((rule) => group.ruleIds.includes(rule.id) && (!query || `${rule.label} ${rule.detail}`.toLocaleLowerCase("zh-TW").includes(query))),
+    })).filter((group) => group.rules.length > 0);
+  }, [ruleSearch]);
+
+  const toggleRuleGroup = (groupId: RuleGroupId) => {
+    setExpandedRuleGroups((current) => current.includes(groupId) ? current.filter((id) => id !== groupId) : [...current, groupId]);
+  };
 
   useEffect(() => {
     const handleFullscreenChange = () => setIsPdfPreviewFullscreen(document.fullscreenElement?.id === "pdf-preview-dialog");
@@ -535,17 +573,45 @@ export default function Home() {
                 <button className="text-button quick-toggle text-button--quiet" onClick={() => setAllRules(false)} disabled={enabledRules.length === 0}>全不選</button>
               </div>
             </div>
-            <div className={`rule-grid ${DEFAULT_RULES.length > 8 ? "rule-grid--extended" : ""}`}>
-              {DEFAULT_RULES.map((rule) => {
-                const enabled = enabledRules.includes(rule.id);
-                return (
-                  <button className={`rule-card ${enabled ? "rule-card--enabled" : ""}`} key={rule.id} onClick={() => toggleRule(rule.id)} aria-pressed={enabled}>
-                    <span className="rule-card__icon">{rule.id === "email" ? "@" : rule.id === "phone" ? "☎" : rule.id === "taiwanId" ? "ID" : rule.id === "uniformNumber" ? "統" : rule.id === "number" ? "#" : rule.id === "date" ? "D" : rule.id === "ip" ? "IP" : rule.id === "address" ? "⌂" : rule.id === "placeName" ? "地" : "區"}</span>
-                    <span className="rule-card__text"><strong>{rule.label}</strong><small>{rule.detail}</small></span>
-                    <span className="rule-card__check">{enabled ? <Check size={13} /> : <span />}</span>
-                  </button>
-                );
-              })}
+            <div className="rule-selector">
+              <div className="rule-selector__toolbar">
+                <label className="rule-search">
+                  <Search size={15} aria-hidden="true" />
+                  <span className="sr-only">搜尋去識別化規則</span>
+                  <input value={ruleSearch} onChange={(event) => setRuleSearch(event.target.value)} placeholder="搜尋規則，例如：姓名、電話、數字" />
+                  {ruleSearch && <button type="button" onClick={() => setRuleSearch("")} aria-label="清除規則搜尋"><X size={14} /></button>}
+                </label>
+                <span className="rule-selector__hint">可收合分組 · {visibleRuleGroups.reduce((total, group) => total + group.rules.length, 0)} 項可見</span>
+              </div>
+              <div className="rule-groups">
+                {visibleRuleGroups.map((group) => {
+                  const expanded = ruleSearch.trim().length > 0 || expandedRuleGroups.includes(group.id);
+                  const enabledCount = group.ruleIds.filter((id) => enabledRules.includes(id)).length;
+                  return (
+                    <section className={`rule-group ${expanded ? "rule-group--expanded" : ""}`} key={group.id}>
+                      <button type="button" className="rule-group__toggle" onClick={() => toggleRuleGroup(group.id)} aria-expanded={expanded}>
+                        <span className="rule-group__marker" aria-hidden="true" />
+                        <span className="rule-group__name"><strong>{group.label}</strong><small>{group.detail}</small></span>
+                        <span className="rule-group__count">{enabledCount} / {group.ruleIds.length}</span>
+                        <ChevronDown className="rule-group__chevron" size={15} aria-hidden="true" />
+                      </button>
+                      {expanded && <div className="rule-option-list">
+                        {group.rules.map((rule) => {
+                          const enabled = enabledRules.includes(rule.id);
+                          return (
+                            <button type="button" className={`rule-option ${enabled ? "rule-option--enabled" : ""}`} key={rule.id} onClick={() => toggleRule(rule.id)} aria-pressed={enabled}>
+                              <span className="rule-option__icon" aria-hidden="true">{RULE_ICONS[rule.id]}</span>
+                              <span className="rule-option__text"><strong>{rule.label}</strong><small>{rule.detail}</small></span>
+                              <span className="rule-option__check" aria-hidden="true">{enabled ? <Check size={12} /> : <span />}</span>
+                            </button>
+                          );
+                        })}
+                      </div>}
+                    </section>
+                  );
+                })}
+              </div>
+              {visibleRuleGroups.length === 0 && <p className="rule-selector__empty">找不到相符規則，請改用其他關鍵字。</p>}
             </div>
             <div className="custom-rule">
               <div className="custom-rule__topline"><div className="custom-rule__label"><Fingerprint size={17} /><span><strong>自訂關鍵字</strong><small>例如：專案名稱、內部代號、客戶姓名</small></span></div><div className="custom-rule__dictionary-actions"><button className="text-button" onClick={exportDictionary} disabled={!customTerms.length}><ArrowDownToLine size={13} /> 匯出字典</button><button className="text-button text-button--quiet" onClick={() => dictionaryInputRef.current?.click()}><Upload size={13} /> 匯入字典</button><input ref={dictionaryInputRef} type="file" accept="application/json,.json" onChange={(event) => importDictionary(event.target.files?.[0])} hidden /></div></div>

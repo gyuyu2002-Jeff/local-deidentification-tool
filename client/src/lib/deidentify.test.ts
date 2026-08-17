@@ -52,6 +52,21 @@ describe("deidentifyText", () => {
     expect(output.total).toBe(2);
   });
 
+  it("replaces labeled Chinese names without masking ordinary prose", () => {
+    const output = deidentifyText("姓名：王小明；聯絡人：李小美。這是一段普通文字。", ["name"], []);
+
+    expect(output.text).toBe("[NAME]；[NAME]。這是一段普通文字。");
+    expect(output.counts.name).toBe(2);
+    expect(output.total).toBe(2);
+  });
+
+  it("leaves labeled names untouched when the name rule is disabled", () => {
+    const output = deidentifyText("申請人：陳大文", ["email"], []);
+
+    expect(output.text).toBe("申請人：陳大文");
+    expect(output.total).toBe(0);
+  });
+
   it("replaces a valid uniform number but ignores an invalid eight-digit value", () => {
     const output = deidentifyText("公司統編：04595257；無效數字：12345678", ["uniformNumber"], []);
 
@@ -75,11 +90,12 @@ describe("deidentifyText", () => {
     expect(output.counts.phone).toBe(1);
   });
 
-  it("keeps the ten default rules in location-first and number-last order", () => {
+  it("keeps the eleven default rules in location-first and number-last order", () => {
     expect(DEFAULT_RULES.map((rule) => rule.id)).toEqual([
       "address",
       "placeName",
       "region",
+      "name",
       "taiwanId",
       "uniformNumber",
       "email",
