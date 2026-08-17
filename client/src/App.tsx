@@ -7,6 +7,7 @@ import { Route, Router as WouterRouter, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
+import LegalPage from "./pages/LegalPage";
 
 
 function Router() {
@@ -14,6 +15,8 @@ function Router() {
     <WouterRouter base={import.meta.env.BASE_URL}>
       <Switch>
         <Route path={"/"} component={Home} />
+        <Route path={"/privacy"}><LegalPage kind="privacy" /></Route>
+        <Route path={"/cookies"}><LegalPage kind="cookies" /></Route>
         <Route path={"/404"} component={NotFound} />
         {/* Final fallback route */}
         <Route component={NotFound} />

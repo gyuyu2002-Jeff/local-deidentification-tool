@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDownToLine,
+  Cookie as CookieIcon,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -37,7 +38,9 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { Link } from "wouter";
 import AdSlot from "@/components/AdSlot";
+import ConsentBanner from "@/components/ConsentBanner";
 import DiffView from "@/components/DiffView";
 import PdfVisualCompare from "@/components/PdfVisualCompare";
 import {
@@ -504,6 +507,8 @@ export default function Home() {
           {menuOpen && (
             <div className="menu-popover">
               <button onClick={() => toast.info("目前版本不會將資料寫入瀏覽器儲存空間。試算完成後可直接關閉頁面。")}><Info size={15} /> 儲存說明</button>
+              <Link href="/privacy" onClick={() => setMenuOpen(false)}><ShieldCheck size={15} /> 隱私權政策</Link>
+              <Link href="/cookies" onClick={() => setMenuOpen(false)}><CookieIcon size={15} /> Cookie／廣告宣告</Link>
             </div>
           )}
         </div>
@@ -711,7 +716,8 @@ export default function Home() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <footer className="site-footer"><span className="site-footer__brand">無意識 · 去識別化工作站</span><span>本機處理 · 無雲端副本 · 可檢查的替換</span><span>v0.1 / 2026</span></footer>
+      <footer className="site-footer"><span className="site-footer__brand">無意識 · 去識別化工作站</span><span>本機處理 · 無雲端副本 · 可檢查的替換</span><span className="site-footer__links"><Link href="/privacy">隱私權政策</Link><Link href="/cookies">Cookie 宣告</Link><button type="button" onClick={() => window.dispatchEvent(new CustomEvent("open-cookie-settings"))}>Cookie 設定</button></span><span>v0.1 / 2026</span></footer>
+      <ConsentBanner />
     </div>
   );
 }
