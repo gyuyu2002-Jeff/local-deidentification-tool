@@ -183,7 +183,7 @@ function PrivacyPanel() {
         <span>PRIVATE BY DEFAULT</span>
       </div>
       <h2>資料不離開這台裝置。</h2>
-      <p>所有比對、替換與掃描 PDF OCR 都在瀏覽器記憶體中執行。關閉頁面或按下清除後，工作區內容就不再保留。</p>
+      <p>這是本工作站的資料邊界承諾：比對、替換與掃描 PDF OCR 都在瀏覽器記憶體中執行，不使用後端 API。關閉頁面或按下清除後，工作區內容就不再保留。</p>
       <div className="privacy-panel__list">
         <span><CheckCircle2 size={15} /> 不使用後端 API</span>
         <span><CheckCircle2 size={15} /> 不儲存原始文字</span>
@@ -510,9 +510,9 @@ export default function Home() {
           <div className="workbench__intro rise-in">
             <div>
               <span className="eyebrow">01 / DATA BOUNDARY · LOCAL ONLY</span>
-              <h1>資料不離開<br /><em>這台裝置。</em></h1>
+              <h1>這個網站的<br /><em>去識別化說明。</em></h1>
             </div>
-            <p className="intro-note">先放入需檢查的資料；去識別化、掃描 PDF 辨識與下載前覆核都在此裝置完成，原始內容不會離開瀏覽器。</p>
+            <p className="intro-note">文字、Excel、Word、PDF 與掃描 PDF 會先在瀏覽器端解析，再依選定規則替換；您可在下載前檢視差異與 PDF 版面。</p>
           </div>
 
           <div className="editor-card rise-in" style={{ animationDelay: "70ms" }}>
