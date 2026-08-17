@@ -593,10 +593,12 @@ export default function Home() {
                 {visibleRuleGroups.map((group) => {
                   const expanded = ruleSearch.trim().length > 0 || expandedRuleGroups.includes(group.id);
                   const enabledCount = group.ruleIds.filter((id) => enabledRules.includes(id)).length;
+                  const allEnabled = group.ruleIds.length > 0 && enabledCount === group.ruleIds.length;
+                  const partiallyEnabled = enabledCount > 0 && !allEnabled;
                   return (
-                    <section className={`rule-group ${expanded ? "rule-group--expanded" : ""}`} key={group.id}>
+                    <section className={`rule-group ${expanded ? "rule-group--expanded" : ""} ${allEnabled ? "rule-group--all-enabled" : ""} ${partiallyEnabled ? "rule-group--partial" : ""}`} key={group.id}>
                       <button type="button" className="rule-group__toggle" onClick={() => toggleRuleGroup(group.id)} aria-expanded={expanded}>
-                        <span className="rule-group__marker" aria-hidden="true" />
+                        <span className="rule-group__marker" aria-hidden="true">{allEnabled ? <Check size={8} strokeWidth={3} /> : partiallyEnabled ? <span className="rule-group__marker-dot" /> : null}</span>
                         <span className="rule-group__name"><strong>{group.label}</strong><small>{group.detail}</small></span>
                         <span className="rule-group__count">{enabledCount} / {group.ruleIds.length}</span>
                         <ChevronDown className="rule-group__chevron" size={15} aria-hidden="true" />

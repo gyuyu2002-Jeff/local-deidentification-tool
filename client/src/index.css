@@ -301,8 +301,11 @@
   .rule-group:nth-child(odd) { border-right: 1px solid var(--line); }
   .rule-group__toggle { width: 100%; min-height: 54px; display: flex; align-items: center; gap: 9px; padding: 10px 12px; border: 0; background: transparent; color: var(--ink); text-align: left; }
   .rule-group__toggle:hover { background: rgba(235, 228, 215, 0.4); }
-  .rule-group__marker { width: 7px; height: 7px; flex: 0 0 auto; border: 1px solid var(--amber); background: transparent; }
-  .rule-group--expanded .rule-group__marker { background: var(--amber); }
+  .rule-group__marker { width: 10px; height: 10px; flex: 0 0 auto; display: grid; place-items: center; border: 1px solid var(--amber); background: transparent; color: var(--ink); transition: background 160ms var(--ease-out), border-color 160ms var(--ease-out), transform 160ms var(--ease-out); }
+  .rule-group--all-enabled .rule-group__marker { background: var(--amber); border-color: var(--amber); }
+  .rule-group--partial .rule-group__marker { background: rgba(200, 148, 62, 0.38); border-color: var(--amber); }
+  .rule-group__marker-dot { width: 4px; height: 2px; background: var(--ink); }
+  .rule-group--expanded .rule-group__marker { transform: translateY(-1px); }
   .rule-group__name { min-width: 0; flex: 1; display: grid; gap: 2px; }
   .rule-group__name strong { font-size: 11px; }
   .rule-group__name small { overflow: hidden; color: var(--ink-soft); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
