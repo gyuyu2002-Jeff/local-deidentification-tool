@@ -31,6 +31,19 @@ describe("PDF 覆核遮罩資料模型", () => {
     expect(redactions[0]).toMatchObject({ pageNumber: 1, x: 8, y: 66, width: 165, height: 17, origin: "automatic", color: "blue", label: "" });
   });
 
+  it("會將被拆成欄位標籤與欄位值的公司及聯絡人文字完整遮罩", () => {
+    const redactions = createAutomaticRedactions([
+      { str: "分公司名稱", transform: [1, 0, 0, 12, 10, 120], width: 48, height: 12 },
+      { str: "互盛股份有限公司 桃園通訊", transform: [1, 0, 0, 12, 70, 120], width: 132, height: 12 },
+      { str: "聯絡人", transform: [1, 0, 0, 12, 10, 96], width: 36, height: 12 },
+      { str: "吳美麗", transform: [1, 0, 0, 12, 70, 96], width: 36, height: 12 },
+    ], 1, 200, ["companyName", "contactName"], []);
+
+    expect(redactions).toHaveLength(2);
+    expect(redactions[0]).toMatchObject({ x: 8, y: 66, width: 197, height: 17, origin: "automatic" });
+    expect(redactions[1]).toMatchObject({ x: 8, y: 90, width: 101, height: 17, origin: "automatic" });
+  });
+
   it("會用人工調整覆寫同一個自動遮罩，並保留新畫出的遮罩", () => {
     const adjusted = { ...automatic, x: 16, y: 62, width: 86, height: 20 };
     const manual = { id: "manual-1", pageNumber: 1, x: 110, y: 80, width: 44, height: 18, label: "", origin: "manual" as const, color: "red" as const };

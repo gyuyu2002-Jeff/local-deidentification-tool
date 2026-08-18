@@ -17,6 +17,12 @@ export type DeidentifyResult = {
   total: number;
 };
 
+export type DeidentificationRange = {
+  start: number;
+  end: number;
+  ruleId: RuleId | "custom";
+};
+
 export const DEFAULT_RULES: DeidentifyRule[] = [
   {
     id: "address",
@@ -137,6 +143,46 @@ export function isValidTaiwanUniformNumber(value: string) {
 
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+export function findDeidentificationRanges(
+  input: string,
+  enabledRuleIds: RuleId[],
+  customTerms: string[],
+): DeidentificationRange[] {
+  const ranges: DeidentificationRange[] = [];
+  const overlapsExistingRange = (start: number, end: number) => ranges.some((range) => range.start < end && range.end > start);
+
+  for (const rule of DEFAULT_RULES) {
+    if (!enabledRuleIds.includes(rule.id)) continue;
+    const sourcePattern = PATTERNS[rule.id];
+    const pattern = new RegExp(sourcePattern.source, sourcePattern.flags);
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(input)) !== null) {
+      const start = match.index;
+      const end = start + match[0].length;
+      if (rule.id === "uniformNumber" && !isValidTaiwanUniformNumber(match[0])) continue;
+      if (!overlapsExistingRange(start, end)) ranges.push({ start, end, ruleId: rule.id });
+      if (match[0].length === 0) pattern.lastIndex += 1;
+    }
+  }
+
+  const normalizedTerms = customTerms
+    .map((term) => term.trim())
+    .filter((term, index, list) => term.length > 0 && list.indexOf(term) === index)
+    .sort((a, b) => b.length - a.length);
+  for (const term of normalizedTerms) {
+    const pattern = new RegExp(escapeRegExp(term), "gi");
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(input)) !== null) {
+      const start = match.index;
+      const end = start + match[0].length;
+      if (!overlapsExistingRange(start, end)) ranges.push({ start, end, ruleId: "custom" });
+      if (match[0].length === 0) pattern.lastIndex += 1;
+    }
+  }
+
+  return ranges.sort((left, right) => left.start - right.start || right.end - left.end);
 }
 
 export function deidentifyText(

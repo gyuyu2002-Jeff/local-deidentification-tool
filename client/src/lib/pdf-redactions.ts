@@ -1,6 +1,6 @@
 // 設計提醒：PDF 遮罩資料只存在於瀏覽器工作階段；使用穩定、可匯出的 PDF 座標，讓覆核畫面與下載結果一致。
 
-import { deidentifyText, type RuleId } from "./deidentify";
+import { findDeidentificationRanges, type RuleId } from "./deidentify";
 
 export type TextItemLike = {
   str: string;
@@ -120,6 +120,97 @@ export function isTextItem(item: unknown): item is TextItemLike {
   return typeof item === "object" && item !== null && "str" in item && "transform" in item && "width" in item && "height" in item;
 }
 
+type TextSpan = {
+  start: number;
+  end: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+type TextRow = {
+  text: string;
+  spans: TextSpan[];
+};
+
+function getItemPosition(item: TextItemLike) {
+  const [, , , , x, y] = item.transform;
+  return {
+    x,
+    y,
+    width: Math.max(0, item.width),
+    height: Math.max(10, Math.abs(item.height || item.transform[3] || 10)),
+  };
+}
+
+function buildTextRows(items: TextItemLike[]) {
+  const positioned = items
+    .map((item, index) => ({ item, index, ...getItemPosition(item) }))
+    .filter((item) => item.item.str.trim())
+    .sort((left, right) => Math.abs(left.y - right.y) < 3 ? left.x - right.x : right.y - left.y);
+  const rows: { y: number; height: number; items: typeof positioned }[] = [];
+
+  for (const item of positioned) {
+    const row = rows.find((candidate) => Math.abs(candidate.y - item.y) <= Math.max(3, Math.min(candidate.height, item.height) * 0.45));
+    if (row) {
+      row.items.push(item);
+      row.y = (row.y * (row.items.length - 1) + item.y) / row.items.length;
+      row.height = Math.max(row.height, item.height);
+    } else {
+      rows.push({ y: item.y, height: item.height, items: [item] });
+    }
+  }
+
+  return rows.map<TextRow>((row) => {
+    const fragments = [...row.items].sort((left, right) => left.x - right.x);
+    let text = "";
+    const spans: TextSpan[] = [];
+    let previousRight: number | null = null;
+    for (const fragment of fragments) {
+      const gap = previousRight === null ? "" : fragment.x - previousRight > Math.max(6, fragment.height * 0.8) ? "\t" : "";
+      text += gap;
+      const start = text.length;
+      text += fragment.item.str;
+      spans.push({ start, end: text.length, x: fragment.x, y: fragment.y, width: fragment.width, height: fragment.height });
+      previousRight = fragment.x + fragment.width;
+    }
+    return { text, spans };
+  });
+}
+
+function intersectsTextSpan(span: TextSpan, start: number, end: number) {
+  return span.start < end && span.end > start;
+}
+
+function createRedactionFromSpans(
+  pageNumber: number,
+  pageHeight: number,
+  row: TextRow,
+  start: number,
+  end: number,
+  id: string,
+  color: PdfRedactionColor,
+) {
+  const spans = row.spans.filter((span) => intersectsTextSpan(span, start, end));
+  if (!spans.length) return null;
+  const left = Math.min(...spans.map((span) => span.x));
+  const right = Math.max(...spans.map((span) => span.x + span.width));
+  const bottom = Math.min(...spans.map((span) => span.y));
+  const height = Math.max(...spans.map((span) => span.height));
+  return {
+    id,
+    pageNumber,
+    x: left - 2,
+    y: pageHeight - bottom - height - 2,
+    width: Math.max(28, right - left + 5),
+    height: Math.max(16, height + 5),
+    label: "",
+    origin: "automatic" as const,
+    color,
+  };
+}
+
 export function createAutomaticRedactions(
   items: TextItemLike[],
   pageNumber: number,
@@ -130,28 +221,23 @@ export function createAutomaticRedactions(
 ) {
   const redactions: PdfRedaction[] = [];
 
-  for (let index = 0; index < items.length; index += 1) {
-    const item = items[index];
-    if (!item.str.trim()) continue;
-    const revised = deidentifyText(item.str, enabledRules, customTerms);
-    if (!revised.total) continue;
-
-    const [, , , , rawX, rawY] = item.transform;
-    const itemHeight = Math.max(10, Math.abs(item.height || item.transform[3] || 10));
-    const width = Math.max(28, item.width + 5);
-    const height = Math.max(16, itemHeight + 5);
-    const label = "";
-    redactions.push({
-      id: `automatic-${pageNumber}-${index}-${Math.round(rawX * 10)}-${Math.round(rawY * 10)}`,
-      pageNumber,
-      x: rawX - 2,
-      y: pageHeight - rawY - itemHeight - 2,
-      width,
-      height,
-      label,
-      origin: "automatic",
-      color,
-    });
+  const rows = buildTextRows(items);
+  for (let rowIndex = 0; rowIndex < rows.length; rowIndex += 1) {
+    const row = rows[rowIndex];
+    const ranges = findDeidentificationRanges(row.text, enabledRules, customTerms);
+    for (let rangeIndex = 0; rangeIndex < ranges.length; rangeIndex += 1) {
+      const range = ranges[rangeIndex];
+      const redaction = createRedactionFromSpans(
+        pageNumber,
+        pageHeight,
+        row,
+        range.start,
+        range.end,
+        `automatic-${pageNumber}-${rowIndex}-${rangeIndex}`,
+        color,
+      );
+      if (redaction) redactions.push(redaction);
+    }
   }
 
   return redactions;
