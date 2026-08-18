@@ -794,10 +794,10 @@ export default function Home() {
             <DialogTitle>下載前檢查原始版面</DialogTitle>
             <DialogDescription>左側保留原始 PDF 的版面、圖片與字型；右側在相同頁面上標示去識別化後的遮罩。請逐頁確認後再下載。</DialogDescription>
           </DialogHeader>
-          <div className="pdf-preview-dialog__meta"><span><FileOutput size={14} /> {fileName || "文字工作區"}</span><span>{sourcePdfFile ? `第 ${pdfPreviewPage} / ${pdfPageCount} 頁 · ` : ""}{resultStats.total} 處自動替換{pdfReviewState.redactionEdits.filter((item) => item.origin === "manual").length > 0 ? ` · ${pdfReviewState.redactionEdits.filter((item) => item.origin === "manual").length} 處人工遮罩` : ""}</span></div>
+          <div className="pdf-preview-dialog__meta"><span><FileOutput size={14} /> {fileName || "文字工作區"}</span><span>{sourcePdfFile ? `第 ${pdfPreviewPage} / ${pdfPageCount} 頁 · ` : ""}{resultStats.total} 處自動替換{pdfReviewState.redactionEdits.filter((item) => item.origin === "manual").length > 0 ? ` · ${pdfReviewState.redactionEdits.filter((item) => item.origin === "manual").length} 處手動遮蔽` : ""}</span></div>
           {sourcePdfFile ? (
             <>
-              <div className="pdf-preview-dialog__page-controls" aria-label="PDF 頁面切換與覆核工具">
+              <div className="pdf-preview-dialog__page-controls" aria-label="PDF 頁面切換與手動遮蔽工具">
                 <div className="pdf-preview-dialog__page-navigation">
                   <button type="button" onClick={() => setPdfPreviewPage((page) => Math.max(1, page - 1))} disabled={pdfPreviewPage <= 1 || isPdfExporting}><ChevronLeft size={15} /> 上一頁</button>
                   <label>頁碼 <input type="number" min={1} max={pdfPageCount} value={pdfPreviewPage} onChange={(event) => setPdfPreviewPage(Math.min(pdfPageCount, Math.max(1, Number(event.target.value) || 1)))} disabled={isPdfExporting} aria-label="前往 PDF 頁碼" /> <span>/ {pdfPageCount}</span></label>
@@ -815,8 +815,8 @@ export default function Home() {
                       </select>
                     </label>
                   </div>
-                  <button type="button" className={`pdf-preview-dialog__mode ${manualReviewMode ? "pdf-preview-dialog__mode--active" : ""}`} onClick={() => setManualReviewMode((enabled) => !enabled)} disabled={isPdfExporting} aria-pressed={manualReviewMode}><Pencil size={14} /> {manualReviewMode ? "覆核編輯中" : "人工覆核"}</button>
-                  {manualReviewMode && <div className="pdf-preview-dialog__color-picker" role="group" aria-label="新增人工遮罩顏色">
+                  <button type="button" className={`pdf-preview-dialog__mode ${manualReviewMode ? "pdf-preview-dialog__mode--active" : ""}`} onClick={() => setManualReviewMode((enabled) => !enabled)} disabled={isPdfExporting} aria-pressed={manualReviewMode} aria-label={manualReviewMode ? "結束添加手動遮蔽" : "添加手動遮蔽"}><Pencil size={14} /> {manualReviewMode ? "手動遮蔽編輯中" : "添加手動遮蔽"}</button>
+                  {manualReviewMode && <div className="pdf-preview-dialog__color-picker" role="group" aria-label="新增手動遮蔽顏色">
                     <span>遮罩色</span>
                     {(Object.keys(PDF_REDACTION_COLORS) as PdfRedactionColor[]).map((color) => <button type="button" key={color} className={`pdf-preview-dialog__color-swatch pdf-preview-dialog__color-swatch--${color} ${selectedPdfRedactionColor === color ? "pdf-preview-dialog__color-swatch--selected" : ""}`} onClick={() => setSelectedPdfRedactionColor(color)} disabled={isPdfExporting} aria-label={`${color === "blue" ? "藍色" : color === "red" ? "紅色" : "黑色"}遮罩`} aria-pressed={selectedPdfRedactionColor === color} title={`${color === "blue" ? "藍色" : color === "red" ? "紅色" : "黑色"}遮罩`} />)}
                   </div>}

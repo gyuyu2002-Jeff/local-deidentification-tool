@@ -145,9 +145,9 @@ export default function PdfVisualCompare({
         const automaticRedactions = createAutomaticRedactions(textItems, pageNumber, viewport.height / viewport.scale, enabledRules, customTerms, selectedRedactionColor);
         pageStateRef.current = { width, height, scale: viewport.scale, automaticRedactions };
         if (!textItems.length) {
-          setNotice("這一頁為掃描影像，原始版面已保留；請以人工覆核模式拖曳新增遮罩。 ");
+          setNotice("這一頁為掃描影像，原始版面已保留；請使用添加手動遮蔽拖曳新增遮罩。 ");
         } else if (!automaticRedactions.length) {
-          setNotice("本頁未發現可定位的替換內容；如有需要，可用人工覆核模式新增遮罩。 ");
+          setNotice("本頁未發現可定位的替換內容；如有需要，可使用添加手動遮蔽新增遮罩。 ");
         }
         refreshRevisedCanvas();
       } catch (error) {
@@ -340,15 +340,19 @@ export default function PdfVisualCompare({
   return (
     <section className={`pdf-visual-compare ${manualReviewMode ? "pdf-visual-compare--editing" : ""}`} style={{ "--pdf-preview-zoom": zoomPercent / 100, "--pdf-preview-text-scale": textScale } as CSSProperties} aria-label={`PDF 第 ${pageNumber} 頁原始與去識別化後的視覺比較`}>
       {isRendering && <div className="pdf-visual-compare__loading" role="status" aria-live="polite"><LoaderCircle className="spin" size={17} /> 正在本機渲染第 {pageNumber} 頁…</div>}
-      {manualReviewMode && <div className="pdf-visual-compare__review-hint" role="status"><span><Pencil size={14} /> 人工覆核：拖曳新增或移動遮罩；選取後可拖曳四角縮放，方向鍵移動，Shift＋方向鍵調整尺寸。</span>{selectedRedaction && <button type="button" onClick={deleteSelectedRedaction}><Trash2 size={13} /> 刪除選取遮罩</button>}</div>}
+      <div className="pdf-visual-compare__sticky-header">
+        {manualReviewMode && <div className="pdf-visual-compare__review-hint" role="status"><span><Pencil size={14} /> 添加手動遮蔽：拖曳新增或移動遮罩；選取後可拖曳四角縮放，方向鍵移動，Shift＋方向鍵調整尺寸。</span>{selectedRedaction && <button type="button" onClick={deleteSelectedRedaction}><Trash2 size={13} /> 刪除選取遮罩</button>}</div>}
+        <div className="pdf-visual-compare__comparison-headings" aria-label="PDF 比對欄位標題">
+          <div><Eye size={14} /> 去識別化前</div>
+          <div><EyeOff size={14} /> 去識別化後 {redactionCount > 0 && <span>{redactionCount} 處遮罩</span>}</div>
+        </div>
+      </div>
       <div className="pdf-visual-compare__grid" aria-busy={isRendering}>
         <figure className="pdf-page-sheet">
-          <figcaption><Eye size={14} /> 去識別化前</figcaption>
           <canvas ref={originalCanvasRef} />
         </figure>
         <figure className="pdf-page-sheet pdf-page-sheet--revised">
-          <figcaption><EyeOff size={14} /> 去識別化後 {redactionCount > 0 && <span>{redactionCount} 處遮罩</span>}</figcaption>
-          <canvas ref={revisedCanvasRef} tabIndex={manualReviewMode ? 0 : -1} role="img" aria-label={manualReviewMode ? "可人工覆核的去識別化 PDF 頁面；選取遮罩後可拖曳四角縮放，方向鍵移動，Shift 加方向鍵調整尺寸" : "去識別化 PDF 頁面"} style={manualReviewMode ? { cursor: canvasCursor } : undefined} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp} onPointerLeave={() => !pointerSessionRef.current && setCanvasCursor("crosshair")} />
+          <canvas ref={revisedCanvasRef} tabIndex={manualReviewMode ? 0 : -1} role="img" aria-label={manualReviewMode ? "可添加手動遮蔽的去識別化 PDF 頁面；選取遮罩後可拖曳四角縮放，方向鍵移動，Shift 加方向鍵調整尺寸" : "去識別化 PDF 頁面"} style={manualReviewMode ? { cursor: canvasCursor } : undefined} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp} onPointerLeave={() => !pointerSessionRef.current && setCanvasCursor("crosshair")} />
         </figure>
       </div>
       {notice && <p className="pdf-visual-compare__notice">{notice.trim()}</p>}

@@ -235,19 +235,22 @@
   .pdf-preview-dialog__fullscreen svg, .pdf-preview-dialog__mode svg, .pdf-preview-dialog__history-action svg { color: var(--amber-deep); }
   .pdf-preview-dialog__mode:hover:not(:disabled) svg, .pdf-preview-dialog__fullscreen:hover:not(:disabled) svg, .pdf-preview-dialog__history-action:hover:not(:disabled) svg { color: var(--prism-gold); }
   .pdf-visual-compare { position: relative; max-height: min(64vh, 720px); overflow: auto; padding: 18px 24px 22px; background: #e8e2d7; }
-  .pdf-visual-compare__loading { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: center; gap: 8px; width: fit-content; margin: 0 auto 12px; padding: 7px 10px; background: var(--ink); color: var(--paper); box-shadow: 0 8px 20px rgba(20, 34, 28, 0.15); font: 10px "IBM Plex Mono", "Noto Sans TC", monospace; }
+  .pdf-visual-compare__loading { position: sticky; top: 0; z-index: 7; display: flex; align-items: center; justify-content: center; gap: 8px; width: fit-content; margin: 0 auto 12px; padding: 7px 10px; background: var(--ink); color: var(--paper); box-shadow: 0 8px 20px rgba(20, 34, 28, 0.15); font: 10px "IBM Plex Mono", "Noto Sans TC", monospace; }
   .pdf-visual-compare__loading svg { color: var(--amber); }
-  .pdf-visual-compare__review-hint { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 auto 12px; padding: 9px 11px; border-left: 2px solid #3a77a8; background: rgba(255, 253, 248, 0.78); color: var(--ink-soft); font: 10px/1.55 "Noto Sans TC", sans-serif; }
+  .pdf-visual-compare__sticky-header { position: sticky; top: 0; z-index: 5; margin: 0 -24px 14px; padding: 12px 24px 10px; background: #e8e2d7; box-shadow: 0 8px 12px -14px rgba(32, 51, 43, 0.72); }
+  .pdf-visual-compare__review-hint { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: max(calc(720px * var(--pdf-preview-zoom, 1)), calc(100% * var(--pdf-preview-zoom, 1))); margin: 0 0 10px; padding: 9px 11px; border-left: 2px solid #3a77a8; background: rgba(255, 253, 248, 0.78); color: var(--ink-soft); font: 10px/1.55 "Noto Sans TC", sans-serif; }
   .pdf-visual-compare__review-hint span, .pdf-visual-compare__review-hint button { display: inline-flex; align-items: center; gap: 6px; }
   .pdf-visual-compare__review-hint svg { color: #3a77a8; }
   .pdf-visual-compare__review-hint button { flex: 0 0 auto; border: 0; padding: 5px 0; background: transparent; color: var(--ink); font: 700 10px "Noto Sans TC", sans-serif; }
   .pdf-visual-compare__review-hint button:hover { color: #3a77a8; }
+  .pdf-visual-compare__comparison-headings { display: grid; grid-template-columns: repeat(2, minmax(360px, 1fr)); gap: 18px; width: max(calc(720px * var(--pdf-preview-zoom, 1)), calc(100% * var(--pdf-preview-zoom, 1))); color: var(--ink); font: 700 10px "Noto Sans TC", sans-serif; }
+  .pdf-visual-compare__comparison-headings > div { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 9px 10px; border: 1px solid rgba(32, 51, 43, 0.16); background: rgba(255, 253, 248, 0.86); box-shadow: 0 3px 8px rgba(32, 51, 43, 0.04); }
+  .pdf-visual-compare__comparison-headings > div:last-child { border-color: rgba(200, 148, 62, 0.58); }
+  .pdf-visual-compare__comparison-headings svg { color: var(--amber-deep); }
+  .pdf-visual-compare__comparison-headings span { margin-left: auto; color: var(--amber-deep); font: 9px "IBM Plex Mono", monospace; font-weight: 400; white-space: nowrap; }
   .pdf-visual-compare__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; align-items: start; }
   .pdf-page-sheet { min-width: 0; margin: 0; padding: 10px; background: rgba(255, 253, 248, 0.7); border: 1px solid rgba(32, 51, 43, 0.16); box-shadow: 0 10px 24px rgba(32, 51, 43, 0.08); }
   .pdf-page-sheet--revised { border-color: rgba(200, 148, 62, 0.58); }
-  .pdf-page-sheet figcaption { display: flex; align-items: center; gap: 6px; margin-bottom: 9px; color: var(--ink); font: 700 10px "Noto Sans TC", sans-serif; }
-  .pdf-page-sheet figcaption svg { color: var(--amber-deep); }
-  .pdf-page-sheet figcaption span { margin-left: auto; color: var(--amber-deep); font: 9px "IBM Plex Mono", monospace; font-weight: 400; }
   .pdf-page-sheet canvas { display: block; width: 100%; height: auto; background: #fff; }
   .pdf-visual-compare--editing .pdf-page-sheet--revised canvas { cursor: crosshair; outline: 1px solid rgba(58, 119, 168, 0.36); outline-offset: 3px; touch-action: none; }
   .pdf-visual-compare--editing .pdf-page-sheet--revised canvas:focus-visible { outline: 2px solid #3a77a8; outline-offset: 4px; }
@@ -572,6 +575,7 @@
     .pdf-preview-dialog__history-action span { display: none; }
     .pdf-preview-dialog__page-controls label { gap: 4px; }
     .pdf-visual-compare { max-height: 56vh; padding: 14px 18px 18px; }
+    .pdf-visual-compare__sticky-header { margin: 0 -18px 14px; padding: 10px 18px 9px; }
     .pdf-visual-compare__review-hint { align-items: flex-start; flex-direction: column; }
     .pdf-visual-compare__grid { gap: 14px; }
     .pdf-preview-dialog__header, .pdf-preview-dialog__meta, .pdf-preview-dialog__status { padding-left: 18px; padding-right: 18px; }
@@ -816,7 +820,9 @@ html[data-reading-mode="large"] { --reading-body: 1.22; --reading-control: 1.16;
 .dark .input-zone:focus-within { background: rgba(28, 45, 37, 0.98); box-shadow: inset 4px 0 0 var(--amber), 0 0 0 3px rgba(226, 182, 96, 0.18), 0 16px 34px rgba(0, 0, 0, 0.25); }
 .dark .menu-popover, .dark .pdf-preview-dialog, .dark .pdf-preview-dialog__view-controls, .dark .pdf-preview-dialog__page-controls button, .dark .pdf-preview-dialog__mode, .dark .pdf-preview-dialog__fullscreen, .dark .pdf-preview-dialog__history-action, .dark .pdf-preview-dialog__view-controls select, .dark .pdf-preview-dialog__page-controls input, .dark .pdf-preview-dialog__color-picker { background: #1c2d25; color: var(--ink); border-color: var(--line); }
 .dark .pdf-visual-compare { background: #25342d; }
+.dark .pdf-visual-compare__sticky-header { background: #25342d; }
 .dark .pdf-page-sheet, .dark .pdf-visual-compare__review-hint, .dark .pdf-visual-compare__notice { background: rgba(28, 45, 37, 0.88); border-color: var(--line); color: var(--ink-soft); }
+.dark .pdf-visual-compare__comparison-headings > div { background: rgba(28, 45, 37, 0.96); border-color: var(--line); }
 .dark .pdf-preview-dialog__page-controls button:hover:not(:disabled), .dark .pdf-preview-dialog__mode:hover:not(:disabled), .dark .pdf-preview-dialog__fullscreen:hover:not(:disabled), .dark .pdf-preview-dialog__history-action:hover:not(:disabled) { background: var(--amber); color: #1c2d25; border-color: var(--amber); }
 .dark .pdf-preview-dialog [data-slot="dialog-description"], .dark .pdf-preview-dialog__meta, .dark .pdf-preview-dialog__status, .dark .clear-scope-note, .dark .editor-card__footer { color: var(--ink-soft); }
 
