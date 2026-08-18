@@ -724,3 +724,51 @@ body { font-size: 16px; line-height: 1.65; }
   .rule-option__text strong { font-size: 13px; }
   .rule-option__text small { display: block; font-size: 11px; }
 }
+
+/* 可讀性控制：保留資料保管庫的層級，僅以可預測的文字比例提高閱讀舒適度。 */
+:root { --keyboard-inset: 0px; --reading-body: 1; --reading-control: 1; --reading-support: 1; }
+html[data-reading-mode="comfortable"] { --reading-body: 1.1; --reading-control: 1.08; --reading-support: 1.06; }
+html[data-reading-mode="large"] { --reading-body: 1.22; --reading-control: 1.16; --reading-support: 1.12; }
+
+.app-shell { padding-bottom: var(--keyboard-inset); transition: padding-bottom 160ms var(--ease-out); }
+.topbar__actions { gap: 12px; }
+.reading-mode-switch { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border: 1px solid rgba(245, 240, 231, 0.22); background: rgba(245, 240, 231, 0.035); color: rgba(245, 240, 231, 0.62); }
+.reading-mode-switch > svg { margin: 0 3px 0 4px; color: var(--amber); }
+.reading-mode-switch__option { min-width: 38px; min-height: 28px; border: 1px solid transparent; background: transparent; color: inherit; font: 700 11px "Noto Sans TC", sans-serif; transition: color 160ms var(--ease-out), background 160ms var(--ease-out), border-color 160ms var(--ease-out), transform 160ms var(--ease-out); }
+.reading-mode-switch__option:hover { color: var(--paper); background: rgba(245, 240, 231, 0.1); }
+.reading-mode-switch__option--active { border-color: var(--amber); background: var(--amber); color: var(--ink); }
+.reading-mode-switch__option:focus-visible { outline: 2px solid var(--prism-gold); outline-offset: 2px; }
+.reading-mode-switch__short-label { display: none; }
+
+.app-shell :is(.intro-note, .privacy-panel p, .tip-panel p, .legal-document__intro p, .legal-section p, .legal-section blockquote, .consent-banner__copy p, .consent-panel__intro, .pdf-preview-dialog__document, .result-preview) { font-size: calc(1em * var(--reading-body)); }
+.app-shell :is(.text-button, .primary-button, .download-button, .upload-button, .rule-search input, .custom-rule__input input, .custom-rule__input button, .rule-group__name strong, .rule-option__text strong, .pdf-preview-dialog__page-controls button, .pdf-preview-dialog__mode, .pdf-preview-dialog__fullscreen, .pdf-preview-dialog__history-action, .pdf-preview-dialog__back) { font-size: calc(1em * var(--reading-control)); }
+.app-shell :is(.rule-group__name small, .rule-option__text small, .action-row__hint, .result-summary, .pdf-preview-dialog__meta, .pdf-preview-dialog__page-controls, .pdf-visual-compare__review-hint, .pdf-visual-compare__notice, .pdf-page-sheet figcaption, .editor-card__footer, .clear-scope-note) { font-size: calc(1em * var(--reading-support)); }
+
+.input-zone { transition: background 180ms var(--ease-out), box-shadow 180ms var(--ease-out); }
+.input-zone:focus-within { z-index: 2; background: rgba(255, 253, 248, 0.96); box-shadow: inset 4px 0 0 var(--amber), 0 0 0 3px rgba(200, 148, 62, 0.18), 0 16px 34px rgba(32, 51, 43, 0.11); }
+.input-zone textarea, .custom-rule__input input, .rule-search input, .pdf-preview-dialog__page-controls input { scroll-margin-block: calc(24px + env(safe-area-inset-bottom) + var(--keyboard-inset)); }
+.custom-rule__input:focus-within, .rule-search:focus-within { border-color: var(--amber-deep); box-shadow: 0 0 0 3px rgba(200, 148, 62, 0.16); }
+
+.pdf-preview-dialog__view-controls { display: inline-flex; align-items: center; gap: 5px; padding: 3px 5px 3px 8px; border: 1px solid rgba(32, 51, 43, 0.2); background: rgba(255, 253, 248, 0.72); color: var(--ink-soft); font: 700 10px "Noto Sans TC", sans-serif; }
+.pdf-preview-dialog__view-controls button { min-width: 29px; width: 29px; padding: 6px 4px; }
+.pdf-preview-dialog__view-controls output { min-width: 36px; color: var(--ink); text-align: center; font: 700 10px "IBM Plex Mono", monospace; }
+.pdf-preview-dialog__view-controls label { display: inline-flex; align-items: center; gap: 4px; margin-left: 3px; }
+.pdf-preview-dialog__view-controls select { min-height: 29px; border: 1px solid rgba(32, 51, 43, 0.24); outline: 0; padding: 3px 20px 3px 6px; background: var(--paper); color: var(--ink); font: 700 10px "Noto Sans TC", sans-serif; }
+.pdf-preview-dialog__view-controls select:focus { border-color: var(--amber-deep); box-shadow: 0 0 0 2px rgba(200, 148, 62, 0.14); }
+.pdf-visual-compare { --pdf-preview-zoom: 1; --pdf-preview-text-scale: 1; }
+.pdf-visual-compare__grid { grid-template-columns: repeat(2, minmax(360px, 1fr)); width: max(calc(720px * var(--pdf-preview-zoom)), calc(100% * var(--pdf-preview-zoom))); transition: width 180ms var(--ease-out); }
+.pdf-page-sheet figcaption { font-size: calc(1em * var(--pdf-preview-text-scale)); }
+.pdf-visual-compare__notice { font-size: calc(1em * var(--pdf-preview-text-scale)); }
+.pdf-preview-dialog__document { --pdf-preview-text-scale: 1; font-size: calc(16px * var(--pdf-preview-text-scale)); }
+
+@media (max-width: 720px) {
+  .topbar__actions { gap: 6px; }
+  .reading-mode-switch { gap: 1px; padding: 2px; }
+  .reading-mode-switch > svg { width: 12px; margin: 0 1px 0 2px; }
+  .reading-mode-switch__option { min-width: 28px; min-height: 28px; font-size: 10px; }
+  .reading-mode-switch__label { display: none; }
+  .reading-mode-switch__short-label { display: inline; }
+  .input-zone textarea { min-height: 220px; height: max(220px, 38dvh); }
+  .input-zone:focus-within { box-shadow: inset 4px 0 0 var(--amber), 0 0 0 3px rgba(200, 148, 62, 0.2), 0 12px 26px rgba(32, 51, 43, 0.11); }
+  .pdf-preview-dialog__view-controls { order: -1; width: 100%; justify-content: center; }
+}

@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
 import { Route, Router as WouterRouter, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
+import { ReadingModeProvider } from "./contexts/ReadingModeContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import LegalPage from "./pages/LegalPage";
@@ -34,10 +35,12 @@ function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
-        <TooltipProvider>
-          <Toaster position="bottom-right" />
-          <Router />
-        </TooltipProvider>
+        <ReadingModeProvider>
+          <TooltipProvider>
+            <Toaster position="bottom-right" />
+            <Router />
+          </TooltipProvider>
+        </ReadingModeProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );

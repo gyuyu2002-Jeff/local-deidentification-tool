@@ -1,6 +1,6 @@
 // 設計提醒：覆核畫面維持「安靜的資料保管庫」——琥珀遮罩表示已保護內容，藍色細框只在人工編輯時提示目前焦點。
 
-import { type PointerEvent, useCallback, useEffect, useRef, useState } from "react";
+import { type CSSProperties, type PointerEvent, useCallback, useEffect, useRef, useState } from "react";
 import { Eye, EyeOff, LoaderCircle, Pencil, Trash2 } from "lucide-react";
 import { type RuleId } from "@/lib/deidentify";
 import {
@@ -20,6 +20,8 @@ type PdfVisualCompareProps = {
   pageNumber: number;
   enabledRules: RuleId[];
   customTerms: string[];
+  zoomPercent: number;
+  textScale: number;
   manualReviewMode: boolean;
   selectedRedactionColor: PdfRedactionColor;
   reviewState: PdfReviewState;
@@ -57,6 +59,8 @@ export default function PdfVisualCompare({
   pageNumber,
   enabledRules,
   customTerms,
+  zoomPercent,
+  textScale,
   manualReviewMode,
   selectedRedactionColor,
   reviewState,
@@ -118,7 +122,7 @@ export default function PdfVisualCompare({
         const pdf = await loadingTask.promise;
         cleanupPdf = () => pdf.cleanup();
         const page = await pdf.getPage(pageNumber);
-        const viewport = page.getViewport({ scale: PREVIEW_SCALE });
+        const viewport = page.getViewport({ scale: PREVIEW_SCALE * (zoomPercent / 100) });
         const originalCanvas = originalCanvasRef.current;
         const revisedCanvas = revisedCanvasRef.current;
         if (!originalCanvas || !revisedCanvas || disposed) return;
@@ -159,7 +163,7 @@ export default function PdfVisualCompare({
       renderTask?.cancel();
       cleanupPdf?.();
     };
-  }, [customTerms, enabledRules, file, pageNumber, refreshRevisedCanvas]);
+  }, [customTerms, enabledRules, file, pageNumber, refreshRevisedCanvas, zoomPercent]);
 
   useEffect(() => {
     refreshRevisedCanvas();
@@ -334,7 +338,7 @@ export default function PdfVisualCompare({
   const selectedRedaction = getCurrentRedactions().find((item) => item.id === selectedId);
 
   return (
-    <section className={`pdf-visual-compare ${manualReviewMode ? "pdf-visual-compare--editing" : ""}`} aria-label={`PDF 第 ${pageNumber} 頁原始與去識別化後的視覺比較`}>
+    <section className={`pdf-visual-compare ${manualReviewMode ? "pdf-visual-compare--editing" : ""}`} style={{ "--pdf-preview-zoom": zoomPercent / 100, "--pdf-preview-text-scale": textScale } as CSSProperties} aria-label={`PDF 第 ${pageNumber} 頁原始與去識別化後的視覺比較`}>
       {isRendering && <div className="pdf-visual-compare__loading" role="status" aria-live="polite"><LoaderCircle className="spin" size={17} /> 正在本機渲染第 {pageNumber} 頁…</div>}
       {manualReviewMode && <div className="pdf-visual-compare__review-hint" role="status"><span><Pencil size={14} /> 人工覆核：拖曳新增或移動遮罩；選取後可拖曳四角縮放，方向鍵移動，Shift＋方向鍵調整尺寸。</span>{selectedRedaction && <button type="button" onClick={deleteSelectedRedaction}><Trash2 size={13} /> 刪除選取遮罩</button>}</div>}
       <div className="pdf-visual-compare__grid" aria-busy={isRendering}>

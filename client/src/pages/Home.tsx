@@ -32,10 +32,13 @@ import {
   Search,
   ShieldCheck,
   Sparkles,
+  Type,
   Trash2,
   Undo2,
   Upload,
   X,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "wouter";
@@ -43,6 +46,7 @@ import AdSlot from "@/components/AdSlot";
 import ConsentBanner from "@/components/ConsentBanner";
 import DiffView from "@/components/DiffView";
 import PdfVisualCompare from "@/components/PdfVisualCompare";
+import { useReadingMode, type ReadingMode } from "@/contexts/ReadingModeContext";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -102,6 +106,16 @@ Email：ming.wang@example.com
 合約金額：125,000.50`;
 
 const ALL_RULE_IDS = DEFAULT_RULES.map((rule) => rule.id);
+const READING_MODE_OPTIONS: { id: ReadingMode; label: string; shortLabel: string }[] = [
+  { id: "standard", label: "標準", shortLabel: "標" },
+  { id: "comfortable", label: "舒適", shortLabel: "舒" },
+  { id: "large", label: "大字", shortLabel: "大" },
+];
+const PDF_TEXT_SIZE_OPTIONS = [
+  { id: "standard", label: "標準", scale: 1 },
+  { id: "comfortable", label: "舒適", scale: 1.13 },
+  { id: "large", label: "大字", scale: 1.26 },
+] as const;
 
 type RuleGroupId = "location" | "identity" | "contact" | "signals";
 
@@ -205,6 +219,7 @@ function PrivacyPanel() {
 }
 
 export default function Home() {
+  const { readingMode, setReadingMode } = useReadingMode();
   const [input, setInput] = useState("");
   const [result, setResult] = useState("");
   const [activeStep, setActiveStep] = useState<Step>("source");
@@ -227,6 +242,8 @@ export default function Home() {
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false);
   const [pdfPreviewPage, setPdfPreviewPage] = useState(1);
+  const [pdfPreviewZoom, setPdfPreviewZoom] = useState(100);
+  const [pdfPreviewTextSize, setPdfPreviewTextSize] = useState<(typeof PDF_TEXT_SIZE_OPTIONS)[number]["id"]>("standard");
   const [isPdfPreviewFullscreen, setIsPdfPreviewFullscreen] = useState(false);
   const [manualReviewMode, setManualReviewMode] = useState(false);
   const [selectedPdfRedactionColor, setSelectedPdfRedactionColor] = useState<PdfRedactionColor>(DEFAULT_PDF_REDACTION_COLOR);
@@ -258,6 +275,7 @@ export default function Home() {
     : "正在建立 PDF 工作區";
   const pdfPageCount = parsedDocument?.fileType === "pdf" ? Math.max(1, parsedDocument.pageCount ?? 1) : 1;
   const pdfReviewState = pdfReviewHistory.entries[pdfReviewHistory.index];
+  const pdfPreviewTextScale = PDF_TEXT_SIZE_OPTIONS.find((option) => option.id === pdfPreviewTextSize)?.scale ?? 1;
   const canUndoPdfReview = pdfReviewHistory.index > 0;
   const canRedoPdfReview = pdfReviewHistory.index < pdfReviewHistory.entries.length - 1;
   const visibleRuleGroups = useMemo(() => {
@@ -276,6 +294,23 @@ export default function Home() {
     const handleFullscreenChange = () => setIsPdfPreviewFullscreen(document.fullscreenElement?.id === "pdf-preview-dialog");
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
+
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const updateKeyboardInset = () => {
+      const keyboardInset = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop);
+      document.documentElement.style.setProperty("--keyboard-inset", `${keyboardInset}px`);
+    };
+    updateKeyboardInset();
+    viewport.addEventListener("resize", updateKeyboardInset);
+    viewport.addEventListener("scroll", updateKeyboardInset);
+    return () => {
+      viewport.removeEventListener("resize", updateKeyboardInset);
+      viewport.removeEventListener("scroll", updateKeyboardInset);
+      document.documentElement.style.removeProperty("--keyboard-inset");
+    };
   }, []);
 
   useEffect(() => {
@@ -357,6 +392,11 @@ export default function Home() {
     setResult("");
   };
 
+  const revealMobileInput = (element: HTMLElement) => {
+    if (!window.matchMedia("(max-width: 720px)").matches) return;
+    window.setTimeout(() => element.scrollIntoView({ block: "center", behavior: "smooth" }), 140);
+  };
+
   const setAllRules = (enabled: boolean) => {
     setEnabledRules(enabled ? [...ALL_RULE_IDS] : []);
     setResult("");
@@ -384,6 +424,8 @@ export default function Home() {
     setShowDiff(false);
     setPdfPreviewOpen(false);
     setPdfPreviewPage(1);
+    setPdfPreviewZoom(100);
+    setPdfPreviewTextSize("standard");
     setManualReviewMode(false);
     setPdfReviewHistory(createPdfReviewHistory());
     if (document.fullscreenElement) void document.exitFullscreen();
@@ -429,6 +471,8 @@ export default function Home() {
     const fileType = parsedDocument?.fileType ?? "text";
     if (fileType === "pdf") {
       setPdfPreviewPage(1);
+      setPdfPreviewZoom(100);
+      setPdfPreviewTextSize("standard");
       setPdfPreviewOpen(true);
       return;
     }
@@ -503,6 +547,23 @@ export default function Home() {
           <span>無意識 / 去識別化工作站</span>
         </div>
         <div className="topbar__actions">
+          <div className="reading-mode-switch" role="group" aria-label="閱讀模式">
+            <Type size={14} aria-hidden="true" />
+            {READING_MODE_OPTIONS.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                className={readingMode === option.id ? "reading-mode-switch__option reading-mode-switch__option--active" : "reading-mode-switch__option"}
+                onClick={() => setReadingMode(option.id)}
+                aria-pressed={readingMode === option.id}
+                aria-label={`切換為${option.label}閱讀模式`}
+                title={`${option.label}閱讀模式`}
+              >
+                <span className="reading-mode-switch__label">{option.label}</span>
+                <span className="reading-mode-switch__short-label">{option.shortLabel}</span>
+              </button>
+            ))}
+          </div>
           <div className="secure-pill"><ShieldCheck size={15} /> <span>LOCAL ONLY</span></div>
           <button className="icon-button menu-trigger" onClick={() => setMenuOpen((open) => !open)} aria-label="開啟選單" aria-expanded={menuOpen}>
             <Menu size={20} />
@@ -546,6 +607,7 @@ export default function Home() {
               <textarea
                 value={input}
                 onChange={(event) => { setInput(event.target.value); setResult(""); setActiveStep(event.target.value ? "rules" : "source"); }}
+                onFocus={(event) => revealMobileInput(event.currentTarget)}
                 placeholder="將需要處理的文字貼到這裡…"
                 aria-label="原始資料輸入區"
               />
@@ -633,7 +695,7 @@ export default function Home() {
             </div>
             <div className="custom-rule">
               <div className="custom-rule__topline"><div className="custom-rule__label"><Fingerprint size={17} /><span><strong>自訂關鍵字</strong><small>例如：專案名稱、內部代號、客戶姓名</small></span></div><div className="custom-rule__dictionary-actions"><button className="text-button" onClick={exportDictionary} disabled={!customTerms.length}><ArrowDownToLine size={13} /> 匯出字典</button><button className="text-button text-button--quiet" onClick={() => dictionaryInputRef.current?.click()}><Upload size={13} /> 匯入字典</button><input ref={dictionaryInputRef} type="file" accept="application/json,.json" onChange={(event) => importDictionary(event.target.files?.[0])} hidden /></div></div>
-              <div className="custom-rule__input"><input value={customInput} onChange={(event) => setCustomInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") addCustomTerm(); }} placeholder="輸入後按 Enter，可用逗號分隔" /><button onClick={addCustomTerm} aria-label="新增自訂關鍵字">新增</button></div>
+              <div className="custom-rule__input"><input value={customInput} onChange={(event) => setCustomInput(event.target.value)} onFocus={(event) => revealMobileInput(event.currentTarget)} onKeyDown={(event) => { if (event.key === "Enter") addCustomTerm(); }} placeholder="輸入後按 Enter，可用逗號分隔" /><button onClick={addCustomTerm} aria-label="新增自訂關鍵字">新增</button></div>
               {customTerms.length > 0 && <div className="term-list">{customTerms.map((term) => <span key={term}>{term}<button onClick={() => setCustomTerms((current) => current.filter((item) => item !== term))} aria-label={`移除 ${term}`}><X size={12} /></button></span>)}</div>}
             </div>
             <div className="action-row"><span className="action-row__hint"><ScanLine size={16} /> {input ? "規則會在本機即時比對，執行前可隨時調整。" : "放入資料後即可開始設定規則。"}</span><span className="action-row__seal"><LockKeyhole size={13} /> LOCAL ONLY · 執行前確認</span><button className="primary-button" onClick={processText} disabled={!input.trim()}><FileCheck2 size={17} /> 執行去識別化 <ChevronRight size={16} /></button></div>
@@ -701,6 +763,17 @@ export default function Home() {
                   <button type="button" onClick={() => setPdfPreviewPage((page) => Math.min(pdfPageCount, page + 1))} disabled={pdfPreviewPage >= pdfPageCount || isPdfExporting}>下一頁 <ChevronRight size={15} /></button>
                 </div>
                 <div className="pdf-preview-dialog__page-actions">
+                  <div className="pdf-preview-dialog__view-controls" role="group" aria-label="PDF 閱讀控制">
+                    <span className="pdf-preview-dialog__view-label">縮放</span>
+                    <button type="button" onClick={() => setPdfPreviewZoom((zoom) => Math.max(80, zoom - 10))} disabled={isPdfExporting || pdfPreviewZoom <= 80} aria-label="縮小 PDF 預覽" title="縮小 PDF 預覽"><ZoomOut size={14} /></button>
+                    <output aria-live="polite">{pdfPreviewZoom}%</output>
+                    <button type="button" onClick={() => setPdfPreviewZoom((zoom) => Math.min(150, zoom + 10))} disabled={isPdfExporting || pdfPreviewZoom >= 150} aria-label="放大 PDF 預覽" title="放大 PDF 預覽"><ZoomIn size={14} /></button>
+                    <label>字體
+                      <select value={pdfPreviewTextSize} onChange={(event) => setPdfPreviewTextSize(event.target.value as (typeof PDF_TEXT_SIZE_OPTIONS)[number]["id"])} disabled={isPdfExporting} aria-label="PDF 預覽介面字體大小">
+                        {PDF_TEXT_SIZE_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+                      </select>
+                    </label>
+                  </div>
                   <button type="button" className={`pdf-preview-dialog__mode ${manualReviewMode ? "pdf-preview-dialog__mode--active" : ""}`} onClick={() => setManualReviewMode((enabled) => !enabled)} disabled={isPdfExporting} aria-pressed={manualReviewMode}><Pencil size={14} /> {manualReviewMode ? "覆核編輯中" : "人工覆核"}</button>
                   {manualReviewMode && <div className="pdf-preview-dialog__color-picker" role="group" aria-label="新增人工遮罩顏色">
                     <span>遮罩色</span>
@@ -711,9 +784,9 @@ export default function Home() {
                   <button type="button" className="pdf-preview-dialog__fullscreen" onClick={togglePdfPreviewFullscreen} disabled={isPdfExporting} aria-label={isPdfPreviewFullscreen ? "離開全螢幕模式" : "開啟全螢幕模式"} title={isPdfPreviewFullscreen ? "離開全螢幕（Esc）" : "全螢幕檢閱"}>{isPdfPreviewFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}<span>{isPdfPreviewFullscreen ? "離開全螢幕" : "全螢幕"}</span></button>
                 </div>
               </div>
-              <PdfVisualCompare file={sourcePdfFile} pageNumber={pdfPreviewPage} enabledRules={enabledRules} customTerms={customTerms} manualReviewMode={manualReviewMode} selectedRedactionColor={selectedPdfRedactionColor} reviewState={pdfReviewState} onReviewStateChange={(state) => setPdfReviewHistory((history) => recordPdfReviewState(history, state))} />
+              <PdfVisualCompare file={sourcePdfFile} pageNumber={pdfPreviewPage} enabledRules={enabledRules} customTerms={customTerms} zoomPercent={pdfPreviewZoom} textScale={pdfPreviewTextScale} manualReviewMode={manualReviewMode} selectedRedactionColor={selectedPdfRedactionColor} reviewState={pdfReviewState} onReviewStateChange={(state) => setPdfReviewHistory((history) => recordPdfReviewState(history, state))} />
             </>
-          ) : <pre className="pdf-preview-dialog__document" aria-label="去識別化 PDF 內容預覽">{result}</pre>}
+          ) : <pre className="pdf-preview-dialog__document" style={{ "--pdf-preview-text-scale": pdfPreviewTextScale } as React.CSSProperties} aria-label="去識別化 PDF 內容預覽">{result}</pre>}
           {isPdfExporting && <div className="pdf-preview-dialog__status" role="status" aria-live="polite"><LoaderCircle className="spin" size={16} /><span><strong>正在產生 PDF…</strong><small>檔案完全在瀏覽器本機處理，請稍候。</small></span></div>}
           <DialogFooter className="pdf-preview-dialog__footer">
             <DialogClose asChild><button className="pdf-preview-dialog__back" disabled={isPdfExporting}>返回結果</button></DialogClose>
