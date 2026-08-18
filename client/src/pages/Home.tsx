@@ -26,6 +26,7 @@ import {
   Menu,
   Maximize2,
   Minimize2,
+  Monitor,
   Moon,
   Pencil,
   Redo2,
@@ -223,7 +224,7 @@ function PrivacyPanel() {
 
 export default function Home() {
   const { readingMode, setReadingMode } = useReadingMode();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, themePreference, setThemePreference, toggleTheme } = useTheme();
   const [input, setInput] = useState("");
   const [result, setResult] = useState("");
   const [activeStep, setActiveStep] = useState<Step>("source");
@@ -591,6 +592,17 @@ export default function Home() {
             >
               {theme === "dark" ? <Sun size={14} aria-hidden="true" /> : <Moon size={14} aria-hidden="true" />}
               <span className="reading-mode-switch__theme-label">{theme === "dark" ? "淺色" : "深色"}</span>
+            </button>
+            <button
+              type="button"
+              className={themePreference === "system" ? "reading-mode-switch__theme reading-mode-switch__theme--active" : "reading-mode-switch__theme"}
+              onClick={() => setThemePreference?.("system")}
+              aria-pressed={themePreference === "system"}
+              aria-label={`跟隨系統，目前依裝置使用${theme === "dark" ? "深色" : "淺色"}模式`}
+              title="跟隨系統主題"
+            >
+              <Monitor size={14} aria-hidden="true" />
+              <span className="reading-mode-switch__theme-label">系統</span>
             </button>
           </div>
           <div className="secure-pill"><ShieldCheck size={15} /> <span>LOCAL ONLY</span></div>
