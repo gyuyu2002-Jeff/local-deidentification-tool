@@ -107,7 +107,7 @@ type RuleGroupId = "location" | "identity" | "contact" | "signals";
 
 const RULE_GROUPS: { id: RuleGroupId; label: string; detail: string; ruleIds: RuleId[] }[] = [
   { id: "location", label: "位置資訊", detail: "地址、地名與區域", ruleIds: ["address", "placeName", "region"] },
-  { id: "identity", label: "身分識別", detail: "姓名、身分證與統編", ruleIds: ["name", "taiwanId", "uniformNumber"] },
+  { id: "identity", label: "身分識別", detail: "公司、客戶、聯絡人與統編", ruleIds: ["companyName", "customerName", "contactName", "name", "taiwanId", "uniformNumber"] },
   { id: "contact", label: "聯絡資訊", detail: "電子郵件與電話", ruleIds: ["email", "phone"] },
   { id: "signals", label: "時間與技術訊號", detail: "日期、IP 與數字", ruleIds: ["date", "ip", "number"] },
 ];
@@ -116,6 +116,9 @@ const RULE_ICONS: Record<RuleId, string> = {
   address: "⌂",
   placeName: "地",
   region: "區",
+  companyName: "司",
+  customerName: "客",
+  contactName: "聯",
   name: "名",
   taiwanId: "ID",
   uniformNumber: "統",

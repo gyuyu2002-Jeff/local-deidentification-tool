@@ -52,12 +52,34 @@ describe("deidentifyText", () => {
     expect(output.total).toBe(2);
   });
 
-  it("replaces labeled Chinese names without masking ordinary prose", () => {
-    const output = deidentifyText("姓名：王小明；聯絡人：李小美。這是一段普通文字。", ["name"], []);
+  it("replaces general names and contact names independently", () => {
+    const output = deidentifyText("姓名：王小明；聯絡人：李小美。這是一段普通文字。", ["name", "contactName"], []);
 
-    expect(output.text).toBe("[NAME]；[NAME]。這是一段普通文字。");
-    expect(output.counts.name).toBe(2);
+    expect(output.text).toBe("[NAME]；[CONTACT_NAME]。這是一段普通文字。");
+    expect(output.counts.name).toBe(1);
+    expect(output.counts.contactName).toBe(1);
     expect(output.total).toBe(2);
+  });
+
+  it("replaces company and customer names in label-based table text", () => {
+    const output = deidentifyText(
+      "公司名稱\t互盛桃園通訊；客戶名稱：王小明商行；聯絡人姓名：李小美",
+      ["companyName", "customerName", "contactName"],
+      [],
+    );
+
+    expect(output.text).toBe("[COMPANY_NAME]；[CUSTOMER_NAME]；[CONTACT_NAME]");
+    expect(output.counts.companyName).toBe(1);
+    expect(output.counts.customerName).toBe(1);
+    expect(output.counts.contactName).toBe(1);
+    expect(output.total).toBe(3);
+  });
+
+  it("does not mask named fields when their dedicated rules are disabled", () => {
+    const output = deidentifyText("公司名稱：互盛桃園通訊；客戶名稱：王小明商行；聯絡人：李小美", ["name"], []);
+
+    expect(output.text).toBe("公司名稱：互盛桃園通訊；客戶名稱：王小明商行；聯絡人：李小美");
+    expect(output.total).toBe(0);
   });
 
   it("leaves labeled names untouched when the name rule is disabled", () => {
@@ -90,11 +112,14 @@ describe("deidentifyText", () => {
     expect(output.counts.phone).toBe(1);
   });
 
-  it("keeps the eleven default rules in location-first and number-last order", () => {
+  it("keeps the fourteen default rules in location-first and number-last order", () => {
     expect(DEFAULT_RULES.map((rule) => rule.id)).toEqual([
       "address",
       "placeName",
       "region",
+      "companyName",
+      "customerName",
+      "contactName",
       "name",
       "taiwanId",
       "uniformNumber",
