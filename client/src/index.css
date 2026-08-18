@@ -614,84 +614,113 @@
 }
 
 
-/* Readability pass: Quiet Archival Vault keeps the archival hierarchy, while body copy and controls meet a more comfortable reading size. */
-.intro-note { max-width: 320px; font-size: 15px; line-height: 1.85; }
-.rail-step__copy strong { font-size: 15px; }
-.rail-step__copy small, .step-rail__footer p { font-size: 12px; }
-.step-rail__footer strong { font-size: 13px; }
-.editor-card__title { font-size: 15px; }
-.text-button, .upload-button { font-size: 13px; }
-.input-zone textarea { font-size: 15px; }
-.input-zone__empty strong { font-size: 15px; }
-.input-zone__empty span { font-size: 13px; }
-.editor-card__footer { font-size: 12px; }
-.clear-scope-note { font-size: 12px; }
-.privacy-panel p { font-size: 14px; }
-.privacy-panel__list { font-size: 13px; }
-.ad-slot strong { font-size: 13px; }
-.ad-slot p { font-size: 12px; }
-.stat-row { font-size: 13px; }
-.tip-panel p { font-size: 13px; }
-.site-footer { font-size: 12px; letter-spacing: 0.06em; }
-.consent-settings-trigger { font-size: 12px; }
-.consent-banner__copy p, .consent-panel__intro { font-size: 13px; }
-.consent-banner__links a, .consent-panel a { font-size: 12px; }
-.consent-banner__actions .primary-button, .quiet-button, .consent-panel__footer .primary-button { font-size: 12px; }
-.consent-option strong { font-size: 13px; }
-.consent-option small { font-size: 12px; }
-.consent-option__state { font-size: 11px; }
-.legal-nav a { font-size: 12px; }
-.legal-aside p { font-size: 13px; }
-.legal-document__intro p { font-size: 15px; }
-.legal-page__notice strong { font-size: 13px; }
-.legal-page__notice p { font-size: 13px; }
-.legal-section p { font-size: 14px; }
-.legal-section blockquote { font-size: 13px; }
-.legal-table { font-size: 13px; }
-.legal-table th { font-size: 11px; }
-.legal-contact, .legal-contact-line, .legal-links a { font-size: 13px; }
-.legal-status-grid strong { font-size: 13px; }
-.legal-status-grid small { font-size: 12px; }
-.legal-action-row .primary-button, .legal-action-row span, .legal-document__back { font-size: 12px; }
-.pdf-preview-dialog__meta { font-size: 12px; }
-.pdf-preview-dialog__document { font-size: 14px; }
-.pdf-preview-dialog__page-controls, .pdf-preview-dialog__page-controls button { font-size: 12px; }
-.pdf-preview-dialog__mode, .pdf-preview-dialog__fullscreen, .pdf-preview-dialog__history-action { font-size: 12px; }
-.pdf-visual-compare__review-hint { font-size: 13px; }
-.pdf-visual-compare__review-hint button { font-size: 12px; }
-.pdf-page-sheet figcaption { font-size: 13px; }
-.pdf-visual-compare__notice { font-size: 13px; }
-.pdf-preview-dialog__status strong { font-size: 13px; }
-.pdf-preview-dialog__status small { font-size: 12px; }
-.pdf-preview-dialog__back { font-size: 13px; }
-.parse-error, .parse-warning { font-size: 13px; }
-.ocr-progress { font-size: 12px; }
-.ocr-progress__copy strong { font-size: 13px; }
-.ocr-progress__percent { font-size: 13px; }
-.ocr-progress__cancel { font-size: 12px; }
-.ocr-progress__meta { font-size: 11px; }
-.section-heading h2 { font-size: 20px; }
-.rule-count { font-size: 12px; }
-.quick-toggle { font-size: 12px; }
-.rule-card__text strong { font-size: 14px; }
-.rule-card__text small { font-size: 12px; }
-.rule-search input { font-size: 14px; }
-.rule-selector__hint { font-size: 12px; }
+/* Readability pass: Quiet Archival Vault retains its documentary hierarchy while treating 16px as the practical floor for reading and 14px as the floor for secondary controls. */
+body { font-size: 16px; line-height: 1.65; }
+.topbar__context, .local-mark small, .secure-pill { font-size: 13px; }
+.menu-popover button, .menu-popover a { font-size: 15px; }
+.eyebrow, .rail-index { font-size: 12px; }
+.intro-note { max-width: 340px; font-size: 17px; line-height: 1.9; }
+.rail-step__copy strong { font-size: 17px; }
+.rail-step__copy small, .step-rail__footer p { font-size: 14px; }
+.step-rail__footer strong { font-size: 15px; }
+.editor-card__title { font-size: 17px; }
+.text-button, .upload-button { font-size: 15px; }
+.input-zone textarea { font-size: 17px; line-height: 1.9; }
+.input-zone__empty strong { font-size: 17px; }
+.input-zone__empty span { font-size: 15px; }
+.editor-card__footer, .clear-scope-note { font-size: 14px; }
+.clear-confirm-dialog [data-slot="alert-dialog-description"] { font-size: 15px; }
+.clear-confirm-dialog__scope { font-size: 14px; }
+.privacy-panel p { font-size: 16px; line-height: 1.85; }
+.privacy-panel__list { font-size: 15px; }
+.ad-slot strong { font-size: 15px; }
+.ad-slot p, .stat-row, .tip-panel p { font-size: 15px; }
+.site-footer { font-size: 14px; letter-spacing: 0.04em; }
+.consent-settings-trigger { font-size: 13px; }
+.consent-banner__copy p, .consent-panel__intro { font-size: 15px; line-height: 1.75; }
+.consent-banner__links a, .consent-panel a { font-size: 14px; }
+.consent-banner__actions .primary-button, .quiet-button, .consent-panel__footer .primary-button { font-size: 14px; }
+.consent-option strong { font-size: 15px; }
+.consent-option small { font-size: 14px; line-height: 1.6; }
+.consent-option__state { font-size: 12px; }
+.legal-nav a { font-size: 14px; }
+.legal-aside p { font-size: 15px; }
+.legal-document__intro p { font-size: 17px; line-height: 1.85; }
+.legal-page__notice strong { font-size: 15px; }
+.legal-page__notice p { font-size: 15px; line-height: 1.8; }
+.legal-section h2 { font-size: 24px; }
+.legal-section p { font-size: 16px; line-height: 1.95; }
+.legal-section blockquote { font-size: 15px; line-height: 1.85; }
+.legal-table { font-size: 15px; }
+.legal-table th { font-size: 12px; }
+.legal-contact, .legal-contact-line, .legal-links a { font-size: 15px; }
+.legal-status-grid strong { font-size: 15px; }
+.legal-status-grid small { font-size: 14px; }
+.legal-action-row .primary-button, .legal-action-row span, .legal-document__back { font-size: 14px; }
+.pdf-preview-dialog [data-slot="dialog-description"] { font-size: 15px; }
+.pdf-preview-dialog__meta { font-size: 14px; }
+.pdf-preview-dialog__document { font-size: 16px; line-height: 1.95; }
+.pdf-preview-dialog__page-controls, .pdf-preview-dialog__page-controls button { font-size: 14px; }
+.pdf-preview-dialog__mode, .pdf-preview-dialog__fullscreen, .pdf-preview-dialog__history-action { font-size: 14px; }
+.pdf-preview-dialog__color-picker { font-size: 12px; }
+.pdf-visual-compare__loading { font-size: 12px; }
+.pdf-visual-compare__review-hint, .pdf-visual-compare__notice { font-size: 15px; line-height: 1.7; }
+.pdf-visual-compare__review-hint button { font-size: 14px; }
+.pdf-page-sheet figcaption { font-size: 14px; }
+.pdf-page-sheet figcaption span { font-size: 12px; }
+.pdf-preview-dialog__status strong { font-size: 15px; }
+.pdf-preview-dialog__status small { font-size: 14px; }
+.pdf-preview-dialog__back { font-size: 15px; }
+.parse-error, .parse-warning { font-size: 14px; line-height: 1.75; }
+.ocr-progress { font-size: 14px; }
+.ocr-progress__copy strong, .ocr-progress__percent { font-size: 15px; }
+.ocr-progress__cancel { font-size: 14px; }
+.ocr-progress__meta { font-size: 13px; }
+.section-heading h2 { font-size: 22px; }
+.rule-count, .quick-toggle { font-size: 14px; }
+.rule-search input { font-size: 16px; }
+.rule-selector__hint { font-size: 13px; }
+.rule-group__name strong { font-size: 15px; }
+.rule-group__name small { font-size: 13px; }
+.rule-group__count { font-size: 12px; }
+.rule-option__text strong { font-size: 14px; }
+.rule-option__text small { font-size: 12px; }
+.rule-selector__empty { font-size: 14px; }
+.custom-rule__label strong { font-size: 15px; }
+.custom-rule__label small, .custom-rule__dictionary-actions .text-button { font-size: 13px; }
+.custom-rule__input input, .custom-rule__input button { font-size: 15px; }
+.term-list span { font-size: 13px; }
+.action-row__hint { font-size: 14px; }
+.action-row__seal, .result-seal { font-size: 12px; }
+.primary-button, .download-button { font-size: 15px; }
+.done-label { font-size: 13px; }
+.result-preview { font-size: 16px; line-height: 1.95; }
+.result-summary { font-size: 13px; }
+.diff-card__title { font-size: 15px; }
+.diff-card__meta, .diff-card__legend { font-size: 13px; }
+.diff-pane__heading { font-size: 14px; }
+.diff-pane__heading small { font-size: 12px; }
+.diff-pane__content { font-size: 14px; line-height: 1.9; }
 
 @media (max-width: 720px) {
-  .intro-note { font-size: 14px; }
-  .rail-step__copy strong { font-size: 13px; }
-  .rail-step__copy small { font-size: 11px; }
-  .quick-toggle { font-size: 11px; }
-  .site-footer { font-size: 11px; }
+  .intro-note { font-size: 16px; line-height: 1.85; }
+  .rail-step__copy strong { font-size: 15px; }
+  .rail-step__copy small { font-size: 13px; }
+  .quick-toggle { font-size: 13px; }
+  .site-footer { font-size: 13px; }
+  .rule-option { min-height: 56px; padding: 10px; }
+  .pdf-preview-dialog__page-controls button, .pdf-preview-dialog__mode, .pdf-preview-dialog__fullscreen, .pdf-preview-dialog__history-action { font-size: 13px; }
 }
 
 @media (max-width: 430px) {
-  .editor-card__footer { font-size: 11px; }
-  .clear-scope-note { font-size: 11px; }
-  .legal-table { font-size: 12px; }
-  .legal-table th { font-size: 10px; }
-  .legal-page__notice p, .legal-section p { font-size: 13px; }
-  .legal-contact, .legal-contact-line, .legal-links a { font-size: 12px; }
-  .consent-banner__copy p, .consent-panel__intro { font-size: 12px; }
+  .editor-card__footer, .clear-scope-note { font-size: 13px; }
+  .legal-table { font-size: 13px; }
+  .legal-table th { font-size: 11px; }
+  .legal-page__notice p, .legal-section p { font-size: 15px; }
+  .legal-contact, .legal-contact-line, .legal-links a { font-size: 14px; }
+  .consent-banner__copy p, .consent-panel__intro { font-size: 14px; }
+  .rule-group__name strong { font-size: 14px; }
+  .rule-group__name small { font-size: 12px; }
+  .rule-option__text strong { font-size: 13px; }
+  .rule-option__text small { display: block; font-size: 11px; }
 }
