@@ -189,6 +189,18 @@
   .clear-scope-note svg { flex: 0 0 auto; color: var(--amber); }
   .clear-workspace-button { color: var(--ink-soft); }
   .clear-workspace-button:hover { color: var(--ink); }
+  .workflow-prompt { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; margin-top: 16px; padding: 14px 15px; border: 1px solid rgba(200, 148, 62, 0.48); border-left: 3px solid var(--amber); background: linear-gradient(90deg, rgba(200, 148, 62, 0.11), rgba(255, 253, 248, 0.56)); box-shadow: 0 10px 26px rgba(58, 69, 56, 0.035); }
+  .workflow-prompt--review { margin-top: 0; border-color: rgba(200, 148, 62, 0.62); border-left-color: var(--amber); }
+  .workflow-prompt__marker { width: 27px; height: 27px; display: grid; place-items: center; background: var(--ink); color: var(--paper); font: 700 9px "IBM Plex Mono", monospace; letter-spacing: 0.06em; }
+  .workflow-prompt__copy { min-width: 0; display: grid; gap: 3px; }
+  .workflow-prompt__eyebrow { color: var(--amber-deep); font: 700 9px "IBM Plex Mono", monospace; letter-spacing: 0.13em; }
+  .workflow-prompt__copy strong { color: var(--ink); font-size: 12px; line-height: 1.55; }
+  .workflow-prompt__copy small { color: var(--ink-soft); font-size: 10px; line-height: 1.55; }
+  .workflow-prompt__action { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid var(--ink); background: rgba(255, 253, 248, 0.6); color: var(--ink); padding: 9px 11px; font-size: 11px; font-weight: 700; white-space: nowrap; transition: background 180ms var(--ease-out), color 180ms var(--ease-out), transform 160ms var(--ease-out); }
+  .workflow-prompt__action:hover { background: var(--ink); color: var(--paper); }
+  .workflow-prompt__action:active { transform: scale(0.97); }
+  .workflow-prompt__action--primary { border-color: var(--amber); background: var(--amber); }
+  .workflow-prompt__action--primary:hover { background: var(--amber-deep); color: var(--paper); }
   .clear-confirm-dialog { background: var(--paper); border: 1px solid rgba(32, 51, 43, 0.18); border-radius: 2px; color: var(--ink); box-shadow: 0 24px 70px rgba(20, 34, 28, 0.24); }
   .clear-confirm-dialog__kicker { color: var(--amber-deep); font: 10px "IBM Plex Mono", monospace; letter-spacing: 0.16em; }
   .clear-confirm-dialog [data-slot="alert-dialog-title"] { margin-top: 4px; font-family: "DM Sans", "Noto Sans TC", sans-serif; font-size: 22px; letter-spacing: -0.03em; }
@@ -380,6 +392,9 @@
   .term-list { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
   .term-list span { display: inline-flex; align-items: center; gap: 5px; padding: 4px 7px; background: var(--ink); color: var(--paper); font: 10px "IBM Plex Mono", monospace; }
   .term-list button { display: grid; place-items: center; border: 0; background: transparent; color: var(--paper); }
+  .workflow-execution-summary { display: flex; align-items: flex-start; gap: 8px; margin-top: 18px; padding: 10px 12px; border-left: 2px solid var(--amber); background: rgba(235, 228, 215, 0.46); color: var(--ink-soft); font-size: 11px; line-height: 1.6; }
+  .workflow-execution-summary svg { flex: 0 0 auto; margin-top: 2px; color: var(--amber-deep); }
+  .workflow-execution-summary strong { color: var(--ink); margin-right: 4px; }
   .action-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 20px; }
   .action-row__hint { display: flex; align-items: center; gap: 7px; color: var(--ink-soft); font-size: 10px; }
   .action-row__hint svg { color: var(--amber); flex: 0 0 auto; }
@@ -393,6 +408,12 @@
   .done-label { display: inline-flex; align-items: center; gap: 4px; margin-left: 9px; color: #57735a; font-size: 10px; font-weight: 400; }
   .download-button { padding: 8px 11px; background: var(--amber); color: var(--ink); }
   .download-button:hover { background: #d6a85b; color: var(--ink); }
+  .review-checklist { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-bottom: 1px solid var(--line); background: rgba(235, 228, 215, 0.32); }
+  .review-checklist > span { min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 8px; padding: 13px 15px; border-right: 1px solid var(--line); }
+  .review-checklist > span:last-child { border-right: 0; }
+  .review-checklist svg { grid-row: span 2; color: var(--amber-deep); margin-top: 2px; }
+  .review-checklist strong { overflow: hidden; color: var(--ink); font-size: 11px; line-height: 1.45; text-overflow: ellipsis; white-space: nowrap; }
+  .review-checklist small { color: var(--ink-soft); font-size: 9px; line-height: 1.5; }
   .result-preview { max-height: 300px; overflow: auto; margin: 0; padding: 22px; white-space: pre-wrap; word-break: break-word; background: rgba(248, 246, 239, 0.74); color: var(--ink); font: 12px/1.9 "IBM Plex Mono", "Noto Sans TC", monospace; }
   .result-summary { display: flex; flex-wrap: wrap; gap: 18px; padding: 11px 18px; color: var(--ink-soft); font: 10px "IBM Plex Mono", monospace; }
   .result-summary strong { color: var(--amber); font-size: 14px; }
@@ -599,6 +620,11 @@
     .action-row { align-items: stretch; flex-direction: column; }
     .action-row__seal { order: 2; }
     .primary-button { width: 100%; }
+    .workflow-prompt { grid-template-columns: auto minmax(0, 1fr); align-items: start; }
+    .workflow-prompt__action { grid-column: 1 / -1; width: 100%; }
+    .review-checklist { grid-template-columns: 1fr; }
+    .review-checklist > span { border-right: 0; border-bottom: 1px solid var(--line); }
+    .review-checklist > span:last-child { border-bottom: 0; }
     .status-column { display: block; margin-top: 42px; }
     .ad-slot, .stats-panel, .tip-panel { margin-top: 28px; }
     .site-footer { flex-direction: column; gap: 7px; padding: 18px; }
@@ -628,6 +654,8 @@
     .result-card__header { flex-direction: column; }
     .result-card__actions { justify-content: flex-start; }
     .result-seal { width: 100%; }
+    .workflow-prompt { gap: 10px; padding: 12px; }
+    .workflow-prompt__copy strong { font-size: 11px; }
     .pdf-preview-dialog__page-controls { flex-wrap: wrap; }
     .pdf-visual-compare__grid { grid-template-columns: 1fr; }
     .diff-card__toolbar { align-items: flex-start; flex-direction: column; }

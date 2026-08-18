@@ -147,7 +147,7 @@ const RULE_ICONS: Record<RuleId, string> = {
   number: "#",
 };
 
-type Step = "source" | "rules" | "result";
+type Step = "source" | "rules" | "review" | "download";
 
 function LocalMark({ compact = false }: { compact?: boolean }) {
   return (
@@ -168,7 +168,8 @@ function StepRail({ activeStep }: { activeStep: Step }) {
   const steps: { id: Step; number: string; label: string; hint: string }[] = [
     { id: "source", number: "01", label: "放入資料", hint: "貼上或讀取檔案" },
     { id: "rules", number: "02", label: "選擇規則", hint: "確認要遮蔽的內容" },
-    { id: "result", number: "03", label: "檢查結果", hint: "下載去識別化檔案" },
+    { id: "review", number: "03", label: "檢查遮罩", hint: "確認替換與版面" },
+    { id: "download", number: "04", label: "下載輸出", hint: "在本機產生結果檔" },
   ];
   const activeIndex = steps.findIndex((step) => step.id === activeStep);
 
@@ -176,7 +177,7 @@ function StepRail({ activeStep }: { activeStep: Step }) {
     <aside className="step-rail" aria-label="去識別化流程">
       <div className="step-rail__heading">
         <span className="eyebrow">WORKFLOW</span>
-        <span className="rail-index">{String(activeIndex + 1).padStart(2, "0")} / 03</span>
+        <span className="rail-index">{String(activeIndex + 1).padStart(2, "0")} / 04</span>
       </div>
       <div className="step-rail__line" aria-hidden="true" />
       <nav>
@@ -184,7 +185,7 @@ function StepRail({ activeStep }: { activeStep: Step }) {
           const isActive = activeStep === step.id;
           const isDone = activeIndex > index;
           return (
-            <div className={`rail-step ${isActive ? "rail-step--active" : ""} ${isDone ? "rail-step--done" : ""}`} key={step.id}>
+            <div className={`rail-step ${isActive ? "rail-step--active" : ""} ${isDone ? "rail-step--done" : ""}`} key={step.id} aria-current={isActive ? "step" : undefined}>
               <span className="rail-step__number">{isDone ? <Check size={14} /> : step.number}</span>
               <span className="rail-step__copy">
                 <strong>{step.label}</strong>
@@ -258,6 +259,8 @@ export default function Home() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dictionaryInputRef = useRef<HTMLInputElement>(null);
   const parseControllerRef = useRef<AbortController | null>(null);
+  const rulesSectionRef = useRef<HTMLElement>(null);
+  const resultSectionRef = useRef<HTMLDivElement>(null);
 
   const analysis = useMemo(
     () => deidentifyText(input, enabledRules, customTerms),
@@ -285,6 +288,17 @@ export default function Home() {
   const isPdfImmersiveReading = isPdfPreviewFullscreen || isPdfFocusReading;
   const canUndoPdfReview = pdfReviewHistory.index > 0;
   const canRedoPdfReview = pdfReviewHistory.index < pdfReviewHistory.entries.length - 1;
+  const sourcePageCount = Math.max(1, parsedDocument?.pageCount ?? 1);
+  const manualRedactionCount = pdfReviewState.redactionEdits.filter((item) => item.origin === "manual").length;
+  const sourceTypeLabel = parsedDocument?.fileType === "pdf"
+    ? "PDF"
+    : parsedDocument?.fileType === "xlsx"
+      ? "Excel"
+      : parsedDocument?.fileType === "docx"
+        ? "Word"
+        : input.trim()
+          ? "文字內容"
+          : "資料";
   const visibleRuleGroups = useMemo(() => {
     const query = ruleSearch.trim().toLocaleLowerCase("zh-TW");
     return RULE_GROUPS.map((group) => ({
@@ -349,7 +363,7 @@ export default function Home() {
     const next = deidentifyText(input, enabledRules, customTerms);
     setResult(next.text);
     setShowDiff(true);
-    setActiveStep("result");
+    setActiveStep("review");
     toast.success(`已完成 ${next.total} 處替換，原文仍只存在本機。`);
   };
 
@@ -401,6 +415,7 @@ export default function Home() {
   const toggleRule = (id: RuleId) => {
     setEnabledRules((current) => current.includes(id) ? current.filter((ruleId) => ruleId !== id) : [...current, id]);
     setResult("");
+    setActiveStep(input.trim() ? "rules" : "source");
   };
 
   const revealMobileInput = (element: HTMLElement) => {
@@ -411,6 +426,7 @@ export default function Home() {
   const setAllRules = (enabled: boolean) => {
     setEnabledRules(enabled ? [...ALL_RULE_IDS] : []);
     setResult("");
+    setActiveStep(input.trim() ? "rules" : "source");
     toast.info(enabled ? `已全選 ${DEFAULT_RULES.length} 項規則。` : "已全不選規則，請確認是否仍要執行去識別化。");
   };
 
@@ -420,6 +436,7 @@ export default function Home() {
     setCustomTerms((current) => Array.from(new Set([...current, ...terms])));
     setCustomInput("");
     setResult("");
+    setActiveStep(input.trim() ? "rules" : "source");
   };
 
   const clearWorkspace = () => {
@@ -461,6 +478,7 @@ export default function Home() {
       const terms = parseCustomDictionary(await file.text());
       setCustomTerms(terms);
       setResult("");
+      setActiveStep(input.trim() ? "rules" : "source");
       toast.success(`已在本機匯入 ${terms.length} 個自訂關鍵字，並取代目前字典。`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "字典匯入失敗，請確認 JSON 格式。");
@@ -485,9 +503,11 @@ export default function Home() {
       setPdfPreviewZoom(100);
       setPdfPreviewTextSize("standard");
       setIsPdfFocusReading(false);
+      setActiveStep("review");
       setPdfPreviewOpen(true);
       return;
     }
+    setActiveStep("download");
     const exportTask = fileType === "xlsx"
       ? exportSpreadsheet(result, fileName)
       : fileType === "docx"
@@ -511,6 +531,7 @@ export default function Home() {
         selectedRedactionColor: selectedPdfRedactionColor,
       });
       setPdfPreviewOpen(false);
+      setActiveStep("download");
       toast.success("PDF 已成功下載。", {
         description: "檔案已由本機產生，請至瀏覽器下載位置查看。",
       });
@@ -554,6 +575,12 @@ export default function Home() {
     setShowDiff(false);
     setActiveStep("rules");
     toast.success("已載入範例資料；這段內容只用於展示介面。");
+  };
+
+  const continueToRules = () => {
+    if (!input.trim()) return;
+    setActiveStep("rules");
+    window.requestAnimationFrame(() => rulesSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
   };
 
   return (
@@ -681,7 +708,19 @@ export default function Home() {
             {parsedDocument?.warnings.map((warning) => <div className={`parse-warning ${warning.includes("本機使用繁體中文 OCR") ? "parse-warning--ocr" : ""}`} key={warning}><Info size={14} /> {warning}</div>)}
           </div>
 
-          <div className="rules-section rise-in" style={{ animationDelay: "140ms" }}>
+          {input.trim() && !isParsing && (
+            <section className="workflow-prompt workflow-prompt--source" aria-label="下一步：選擇規則">
+              <span className="workflow-prompt__marker" aria-hidden="true">01</span>
+              <div className="workflow-prompt__copy">
+                <span className="workflow-prompt__eyebrow">資料已就緒</span>
+                <strong>已解析 {sourcePageCount} 頁 {sourceTypeLabel}，接著確認要套用的遮蔽規則。</strong>
+                {parsedDocument?.ocrPageCount ? <small>其中 {parsedDocument.ocrPageCount} 頁已在本機完成 OCR 辨識。</small> : <small>原始內容仍只存在目前瀏覽器工作區。</small>}
+              </div>
+              <button type="button" className="workflow-prompt__action" onClick={continueToRules}>前往選擇規則 <ChevronRight size={16} /></button>
+            </section>
+          )}
+
+          <section ref={rulesSectionRef} className="rules-section rise-in" style={{ animationDelay: "140ms" }}>
             <div className="section-heading">
               <div><span className="section-index">B</span><h2>去識別化規則</h2></div>
               <div className="section-heading__actions">
@@ -737,16 +776,31 @@ export default function Home() {
             <div className="custom-rule">
               <div className="custom-rule__topline"><div className="custom-rule__label"><Fingerprint size={17} /><span><strong>自訂關鍵字</strong><small>例如：專案名稱、內部代號、客戶姓名</small></span></div><div className="custom-rule__dictionary-actions"><button className="text-button" onClick={exportDictionary} disabled={!customTerms.length}><ArrowDownToLine size={13} /> 匯出字典</button><button className="text-button text-button--quiet" onClick={() => dictionaryInputRef.current?.click()}><Upload size={13} /> 匯入字典</button><input ref={dictionaryInputRef} type="file" accept="application/json,.json" onChange={(event) => importDictionary(event.target.files?.[0])} hidden /></div></div>
               <div className="custom-rule__input"><input value={customInput} onChange={(event) => setCustomInput(event.target.value)} onFocus={(event) => revealMobileInput(event.currentTarget)} onKeyDown={(event) => { if (event.key === "Enter") addCustomTerm(); }} placeholder="輸入後按 Enter，可用逗號分隔" /><button onClick={addCustomTerm} aria-label="新增自訂關鍵字">新增</button></div>
-              {customTerms.length > 0 && <div className="term-list">{customTerms.map((term) => <span key={term}>{term}<button onClick={() => setCustomTerms((current) => current.filter((item) => item !== term))} aria-label={`移除 ${term}`}><X size={12} /></button></span>)}</div>}
+              {customTerms.length > 0 && <div className="term-list">{customTerms.map((term) => <span key={term}>{term}<button onClick={() => { setCustomTerms((current) => current.filter((item) => item !== term)); setResult(""); setActiveStep(input.trim() ? "rules" : "source"); }} aria-label={`移除 ${term}`}><X size={12} /></button></span>)}</div>}
             </div>
-            <div className="action-row"><span className="action-row__hint"><ScanLine size={16} /> {input ? "規則會在本機即時比對，執行前可隨時調整。" : "放入資料後即可開始設定規則。"}</span><span className="action-row__seal"><LockKeyhole size={13} /> LOCAL ONLY · 執行前確認</span><button className="primary-button" onClick={processText} disabled={!input.trim()}><FileCheck2 size={17} /> 執行去識別化 <ChevronRight size={16} /></button></div>
-          </div>
+            <div className="workflow-execution-summary" aria-live="polite"><ShieldCheck size={15} /><span><strong>執行前摘要</strong> 已啟用 {enabledRules.length} 項規則{customTerms.length > 0 ? `，另有 ${customTerms.length} 個自訂關鍵字` : "，尚未加入自訂關鍵字"}。</span></div>
+            <div className="action-row"><span className="action-row__hint"><ScanLine size={16} /> {input ? "規則會在本機即時比對，執行前可隨時調整。" : "放入資料後即可開始設定規則。"}</span><span className="action-row__seal"><LockKeyhole size={13} /> LOCAL ONLY · 執行前確認</span><button className="primary-button" onClick={processText} disabled={!input.trim()}><FileCheck2 size={17} /> 已啟用 {enabledRules.length} 項規則 · 執行去識別化 <ChevronRight size={16} /></button></div>
+          </section>
 
           {result && (
-            <div className="result-card rise-in">
-              <div className="result-card__header"><div className="editor-card__title"><span className="section-index section-index--amber">C</span><span>處理結果</span><span className="done-label"><CheckCircle2 size={14} /> 已完成</span></div><div className="result-card__actions"><span className="result-seal"><LockKeyhole size={12} /> LOCAL ONLY · 匯出前可預覽</span><button className="text-button" onClick={copyResult}>{copied ? <Check size={14} /> : <Clipboard size={14} />} {copied ? "已複製" : "複製結果"}</button><button className="text-button" onClick={() => setShowDiff((open) => !open)}><FileDiff size={14} /> {showDiff ? "隱藏差異" : "查看差異"}</button><button className="download-button" onClick={downloadResult} aria-haspopup={parsedDocument?.fileType === "pdf" ? "dialog" : undefined}><ArrowDownToLine size={15} /> {parsedDocument?.fileType === "pdf" ? "預覽並下載 PDF" : `下載 ${parsedDocument?.fileType === "xlsx" ? "XLSX" : parsedDocument?.fileType === "docx" ? "DOCX" : "TXT"}`}</button></div></div>
+            <div ref={resultSectionRef} className="result-card rise-in">
+              <div className="result-card__header"><div className="editor-card__title"><span className="section-index section-index--amber">C</span><span>覆核結果</span><span className="done-label"><CheckCircle2 size={14} /> 已完成</span></div><div className="result-card__actions"><span className="result-seal"><LockKeyhole size={12} /> LOCAL ONLY · 匯出前可預覽</span><button className="text-button" onClick={copyResult}>{copied ? <Check size={14} /> : <Clipboard size={14} />} {copied ? "已複製" : "複製結果"}</button><button className="text-button" onClick={() => setShowDiff((open) => !open)}><FileDiff size={14} /> {showDiff ? "隱藏差異" : "查看差異"}</button></div></div>
+              <div className="review-checklist" aria-label="覆核清單">
+                <span><CheckCircle2 size={15} /><strong>已遮蔽 {resultStats.total} 處</strong><small>自動規則已套用</small></span>
+                <span><Pencil size={15} /><strong>手動遮蔽 {manualRedactionCount} 處</strong><small>{sourcePdfFile ? "可在 PDF 預覽中新增或調整" : "此格式可直接檢查文字差異"}</small></span>
+                <span><FileDiff size={15} /><strong>建議：{sourcePdfFile ? "開啟 PDF 預覽確認" : "查看差異確認"}</strong><small>確認無遺漏後再下載</small></span>
+              </div>
               <pre className="result-preview">{result}</pre>
               <div className="result-summary"><span><strong>{resultStats.total}</strong> 處內容已替換</span><span>輸入 {countCharacters(input)} 字元</span><span>輸出 {countCharacters(result)} 字元</span></div>
+              <section className="workflow-prompt workflow-prompt--review" aria-label={sourcePdfFile ? "下一步：開啟 PDF 預覽" : "下一步：下載結果"}>
+                <span className="workflow-prompt__marker" aria-hidden="true">03</span>
+                <div className="workflow-prompt__copy">
+                  <span className="workflow-prompt__eyebrow">覆核摘要</span>
+                  <strong>已替換 {resultStats.total} 處內容{manualRedactionCount > 0 ? `，含 ${manualRedactionCount} 處手動遮蔽` : ""}。</strong>
+                  <small>{sourcePdfFile ? "建議先開啟原始版面比對，確認遮罩位置與範圍。" : "確認差異後，即可由本機產生最終結果檔。"}</small>
+                </div>
+                <button type="button" className="workflow-prompt__action workflow-prompt__action--primary" onClick={downloadResult} aria-haspopup={sourcePdfFile ? "dialog" : undefined}>{sourcePdfFile ? <>開啟 PDF 預覽 <ChevronRight size={16} /></> : <>下載結果 <ArrowDownToLine size={16} /></>}</button>
+              </section>
             </div>
           )}
           {result && showDiff && <DiffView original={input} revised={result} onClose={() => setShowDiff(false)} />}
