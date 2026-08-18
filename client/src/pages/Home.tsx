@@ -207,7 +207,7 @@ export default function Home() {
   const [activeStep, setActiveStep] = useState<Step>("source");
   const [enabledRules, setEnabledRules] = useState<RuleId[]>(ALL_RULE_IDS);
   const [ruleSearch, setRuleSearch] = useState("");
-  const [expandedRuleGroups, setExpandedRuleGroups] = useState<RuleGroupId[]>(["identity"]);
+  const [expandedRuleGroups, setExpandedRuleGroups] = useState<RuleGroupId[]>([]);
   const [customTerms, setCustomTerms] = useState<string[]>([]);
   const [customInput, setCustomInput] = useState("");
   const [fileName, setFileName] = useState("");
