@@ -31,7 +31,7 @@ function PrivacyPage() {
       </LegalSection>
       <LegalSection title="保存、安全與使用者權利">
         <p>工作區資料可由使用者按下「清除工作區」移除；關閉分頁、重新整理或瀏覽器記憶體回收也可能使尚未下載的資料消失。依適用法律，你可能享有查詢、更正、刪除、停止處理、撤回同意及提出申訴等權利。</p>
-        <div className="legal-contact"><span>營運者</span><strong>[請填入個人／公司／組織名稱]</strong><span>隱私權信箱</span><strong>gyuyu20002@gmail.com</strong><span>正式網址</span><strong>[請填入 HTTPS 網址]</strong></div>
+        <div className="legal-contact"><span>營運者</span><strong>[請填入個人／公司／組織名稱]</strong><span>聯絡信箱</span><strong>gyuyu20002@gmail.com<br />gyuyu2002@gmail.com</strong><span>正式網址</span><strong>[請填入 HTTPS 網址]</strong></div>
       </LegalSection>
       <LegalSection title="官方參考資料">
         <p className="legal-links"><a href="https://support.google.com/adsense/answer/10502938?hl=en" target="_blank" rel="noreferrer">Google Publisher Policies <ExternalLink size={13} /></a><a href="https://www.google.com/about/company/user-consent-policy/" target="_blank" rel="noreferrer">Google EU User Consent Policy <ExternalLink size={13} /></a><a href="https://policies.google.com/technologies/cookies?hl=en-US" target="_blank" rel="noreferrer">How Google uses cookies <ExternalLink size={13} /></a></p>
@@ -57,7 +57,7 @@ function CookiesPage() {
       </LegalSection>
       <LegalSection title="Google AdSense 參考資料">
         <p className="legal-links"><a href="https://support.google.com/adsense/answer/48182?hl=en" target="_blank" rel="noreferrer">AdSense Program policies <ExternalLink size={13} /></a><a href="https://policies.google.com/privacy" target="_blank" rel="noreferrer">Google 隱私權政策 <ExternalLink size={13} /></a><a href="https://adssettings.google.com/" target="_blank" rel="noreferrer">Google 廣告設定 <ExternalLink size={13} /></a></p>
-        <p className="legal-contact-line">政策、Cookie 或資料處理問題：<a href="mailto:gyuyu20002@gmail.com">gyuyu20002@gmail.com</a></p>
+        <p className="legal-contact-line">政策、Cookie 或資料處理問題：<a href="mailto:gyuyu20002@gmail.com">gyuyu20002@gmail.com</a>、<a href="mailto:gyuyu2002@gmail.com">gyuyu2002@gmail.com</a></p>
       </LegalSection>
     </LegalShell>
   );
