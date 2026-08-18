@@ -1,5 +1,5 @@
 // 設計提醒：覆核畫面維持「安靜的資料保管庫」——琥珀遮罩表示已保護內容，藍色細框只在人工編輯時提示目前焦點。
-
+// Quiet Archival Vault: keep the inspection band visually separate while document sheets scroll below it.
 import { type CSSProperties, type PointerEvent, useCallback, useEffect, useRef, useState } from "react";
 import { Eye, EyeOff, LoaderCircle, Pencil, Trash2 } from "lucide-react";
 import { type RuleId } from "@/lib/deidentify";
@@ -339,23 +339,27 @@ export default function PdfVisualCompare({
 
   return (
     <section className={`pdf-visual-compare ${manualReviewMode ? "pdf-visual-compare--editing" : ""}`} style={{ "--pdf-preview-zoom": zoomPercent / 100, "--pdf-preview-text-scale": textScale } as CSSProperties} aria-label={`PDF 第 ${pageNumber} 頁原始與去識別化後的視覺比較`}>
-      {isRendering && <div className="pdf-visual-compare__loading" role="status" aria-live="polite"><LoaderCircle className="spin" size={17} /> 正在本機渲染第 {pageNumber} 頁…</div>}
-      <div className="pdf-visual-compare__sticky-header">
-        {manualReviewMode && <div className="pdf-visual-compare__review-hint" role="status"><span><Pencil size={14} /> 添加手動遮蔽：拖曳新增或移動遮罩；選取後可拖曳四角縮放，方向鍵移動，Shift＋方向鍵調整尺寸。</span>{selectedRedaction && <button type="button" onClick={deleteSelectedRedaction}><Trash2 size={13} /> 刪除選取遮罩</button>}</div>}
-        <div className="pdf-visual-compare__comparison-headings" aria-label="PDF 比對欄位標題">
-          <div><Eye size={14} /> 去識別化前</div>
-          <div><EyeOff size={14} /> 去識別化後 {redactionCount > 0 && <span>{redactionCount} 處遮罩</span>}</div>
+      <div className="pdf-visual-compare__surface">
+        <div className="pdf-visual-compare__sticky-header">
+          {manualReviewMode && <div className="pdf-visual-compare__review-hint" role="status"><span><Pencil size={14} /> 添加手動遮蔽：拖曳新增或移動遮罩；選取後可拖曳四角縮放，方向鍵移動，Shift＋方向鍵調整尺寸。</span>{selectedRedaction && <button type="button" onClick={deleteSelectedRedaction}><Trash2 size={13} /> 刪除選取遮罩</button>}</div>}
+          <div className="pdf-visual-compare__comparison-headings" aria-label="PDF 比對欄位標題">
+            <div><Eye size={14} /> 去識別化前</div>
+            <div><EyeOff size={14} /> 去識別化後 {redactionCount > 0 && <span>{redactionCount} 處遮罩</span>}</div>
+          </div>
+        </div>
+        <div className="pdf-visual-compare__document-scroll" aria-busy={isRendering}>
+          {isRendering && <div className="pdf-visual-compare__loading" role="status" aria-live="polite"><LoaderCircle className="spin" size={17} /> 正在本機渲染第 {pageNumber} 頁…</div>}
+          <div className="pdf-visual-compare__grid">
+            <figure className="pdf-page-sheet">
+              <canvas ref={originalCanvasRef} />
+            </figure>
+            <figure className="pdf-page-sheet pdf-page-sheet--revised">
+              <canvas ref={revisedCanvasRef} tabIndex={manualReviewMode ? 0 : -1} role="img" aria-label={manualReviewMode ? "可添加手動遮蔽的去識別化 PDF 頁面；選取遮罩後可拖曳四角縮放，方向鍵移動，Shift 加方向鍵調整尺寸" : "去識別化 PDF 頁面"} style={manualReviewMode ? { cursor: canvasCursor } : undefined} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp} onPointerLeave={() => !pointerSessionRef.current && setCanvasCursor("crosshair")} />
+            </figure>
+          </div>
+          {notice && <p className="pdf-visual-compare__notice">{notice.trim()}</p>}
         </div>
       </div>
-      <div className="pdf-visual-compare__grid" aria-busy={isRendering}>
-        <figure className="pdf-page-sheet">
-          <canvas ref={originalCanvasRef} />
-        </figure>
-        <figure className="pdf-page-sheet pdf-page-sheet--revised">
-          <canvas ref={revisedCanvasRef} tabIndex={manualReviewMode ? 0 : -1} role="img" aria-label={manualReviewMode ? "可添加手動遮蔽的去識別化 PDF 頁面；選取遮罩後可拖曳四角縮放，方向鍵移動，Shift 加方向鍵調整尺寸" : "去識別化 PDF 頁面"} style={manualReviewMode ? { cursor: canvasCursor } : undefined} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp} onPointerLeave={() => !pointerSessionRef.current && setCanvasCursor("crosshair")} />
-        </figure>
-      </div>
-      {notice && <p className="pdf-visual-compare__notice">{notice.trim()}</p>}
     </section>
   );
 }
