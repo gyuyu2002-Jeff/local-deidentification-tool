@@ -608,8 +608,9 @@ export default function Home() {
                         <span className="rule-group__count">{enabledCount} / {group.ruleIds.length}</span>
                         <ChevronDown className="rule-group__chevron" size={15} aria-hidden="true" />
                       </button>
-                      {expanded && <div className="rule-option-list">
-                        {group.rules.map((rule) => {
+                      <div className={`rule-option-list ${expanded ? "rule-option-list--open" : ""}`} aria-hidden={!expanded}>
+                        <div className="rule-option-list__inner">
+                         {group.rules.map((rule) => {
                           const enabled = enabledRules.includes(rule.id);
                           return (
                             <button type="button" className={`rule-option ${enabled ? "rule-option--enabled" : ""}`} key={rule.id} onClick={() => toggleRule(rule.id)} aria-pressed={enabled}>
@@ -618,8 +619,9 @@ export default function Home() {
                               <span className="rule-option__check" aria-hidden="true">{enabled ? <Check size={12} /> : <span />}</span>
                             </button>
                           );
-                        })}
-                      </div>}
+                         })}
+                        </div>
+                      </div>
                     </section>
                   );
                 })}
