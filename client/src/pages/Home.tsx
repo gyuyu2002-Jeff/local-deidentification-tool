@@ -815,6 +815,7 @@ export default function Home() {
                       </select>
                     </label>
                   </div>
+                  <button type="button" className="pdf-preview-dialog__download pdf-preview-dialog__download--toolbar" onClick={confirmPdfDownload} disabled={isPdfExporting} aria-label="下載已去識別化的 PDF" title="下載去識別化 PDF">{isPdfExporting ? <LoaderCircle className="spin" size={15} /> : <ArrowDownToLine size={15} />} {isPdfExporting ? "PDF 處理中…" : "下載去識別化 PDF"}</button>
                   <button type="button" className={`pdf-preview-dialog__mode ${manualReviewMode ? "pdf-preview-dialog__mode--active" : ""}`} onClick={() => setManualReviewMode((enabled) => !enabled)} disabled={isPdfExporting} aria-pressed={manualReviewMode} aria-label={manualReviewMode ? "結束添加手動遮蔽" : "添加手動遮蔽"}><Pencil size={14} /> {manualReviewMode ? "手動遮蔽編輯中" : "添加手動遮蔽"}</button>
                   {manualReviewMode && <div className="pdf-preview-dialog__color-picker" role="group" aria-label="新增手動遮蔽顏色">
                     <span>遮罩色</span>
@@ -831,7 +832,7 @@ export default function Home() {
           {isPdfExporting && <div className="pdf-preview-dialog__status" role="status" aria-live="polite"><LoaderCircle className="spin" size={16} /><span><strong>正在產生 PDF…</strong><small>檔案完全在瀏覽器本機處理，請稍候。</small></span></div>}
           <DialogFooter className="pdf-preview-dialog__footer">
             <DialogClose asChild><button className="pdf-preview-dialog__back" disabled={isPdfExporting}>返回結果</button></DialogClose>
-            <button className="download-button pdf-preview-dialog__download" onClick={confirmPdfDownload} disabled={isPdfExporting}>{isPdfExporting ? <LoaderCircle className="spin" size={15} /> : <ArrowDownToLine size={15} />} {isPdfExporting ? "PDF 處理中…" : "確認並下載 PDF"}</button>
+            <button className="download-button pdf-preview-dialog__download" onClick={confirmPdfDownload} disabled={isPdfExporting}>{isPdfExporting ? <LoaderCircle className="spin" size={15} /> : <ArrowDownToLine size={15} />} {isPdfExporting ? "PDF 處理中…" : "下載去識別化 PDF"}</button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
