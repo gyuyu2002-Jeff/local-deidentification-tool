@@ -67,6 +67,33 @@
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
+/* 深色模式延續夜間檔案庫的紙張、墨水與琥珀索引語彙，避免純黑與高飽和霓虹造成閱讀疲勞。 */
+.dark {
+  --primary: oklch(0.82 0.06 155);
+  --primary-foreground: oklch(0.19 0.02 155);
+  --background: oklch(0.19 0.017 155);
+  --foreground: oklch(0.91 0.02 150);
+  --card: oklch(0.24 0.02 155);
+  --card-foreground: oklch(0.91 0.02 150);
+  --popover: oklch(0.24 0.02 155);
+  --popover-foreground: oklch(0.91 0.02 150);
+  --secondary: oklch(0.28 0.022 155);
+  --secondary-foreground: oklch(0.86 0.025 150);
+  --muted: oklch(0.28 0.018 155);
+  --muted-foreground: oklch(0.72 0.026 150);
+  --accent: oklch(0.76 0.12 76);
+  --accent-foreground: oklch(0.22 0.03 76);
+  --border: oklch(0.36 0.025 155);
+  --input: oklch(0.36 0.025 155);
+  --ring: oklch(0.72 0.09 155);
+  --ink: #e8eee8;
+  --ink-soft: #b7c6bd;
+  --paper: #14211b;
+  --paper-deep: #1c2d25;
+  --amber: #e2b660;
+  --line: rgba(222, 234, 225, 0.18);
+}
+
 @layer base {
   * { @apply border-border outline-ring/50; }
   html { background: var(--ink); }
@@ -739,6 +766,12 @@ html[data-reading-mode="large"] { --reading-body: 1.22; --reading-control: 1.16;
 .reading-mode-switch__option--active { border-color: var(--amber); background: var(--amber); color: var(--ink); }
 .reading-mode-switch__option:focus-visible { outline: 2px solid var(--prism-gold); outline-offset: 2px; }
 .reading-mode-switch__short-label { display: none; }
+.reading-mode-switch__divider { width: 1px; height: 18px; margin: 0 2px; background: rgba(245, 240, 231, 0.22); }
+.reading-mode-switch__theme { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-width: 52px; min-height: 28px; padding: 0 7px; border: 1px solid transparent; background: transparent; color: inherit; font: 700 11px "Noto Sans TC", sans-serif; transition: color 160ms var(--ease-out), background 160ms var(--ease-out), border-color 160ms var(--ease-out), transform 160ms var(--ease-out); }
+.reading-mode-switch__theme svg { color: var(--prism-gold); }
+.reading-mode-switch__theme:hover { color: var(--paper); background: rgba(245, 240, 231, 0.1); }
+.reading-mode-switch__theme--active { border-color: var(--amber); background: rgba(226, 182, 96, 0.18); color: #fff8e6; }
+.reading-mode-switch__theme:focus-visible { outline: 2px solid var(--prism-gold); outline-offset: 2px; }
 
 .app-shell :is(.intro-note, .privacy-panel p, .tip-panel p, .legal-document__intro p, .legal-section p, .legal-section blockquote, .consent-banner__copy p, .consent-panel__intro, .pdf-preview-dialog__document, .result-preview) { font-size: calc(1em * var(--reading-body)); }
 .app-shell :is(.text-button, .primary-button, .download-button, .upload-button, .rule-search input, .custom-rule__input input, .custom-rule__input button, .rule-group__name strong, .rule-option__text strong, .pdf-preview-dialog__page-controls button, .pdf-preview-dialog__mode, .pdf-preview-dialog__fullscreen, .pdf-preview-dialog__history-action, .pdf-preview-dialog__back) { font-size: calc(1em * var(--reading-control)); }
@@ -768,7 +801,40 @@ html[data-reading-mode="large"] { --reading-body: 1.22; --reading-control: 1.16;
   .reading-mode-switch__option { min-width: 28px; min-height: 28px; font-size: 10px; }
   .reading-mode-switch__label { display: none; }
   .reading-mode-switch__short-label { display: inline; }
+  .reading-mode-switch__theme { min-width: 28px; width: 28px; padding: 0; }
+  .reading-mode-switch__theme-label { display: none; }
+  .reading-mode-switch__divider { margin: 0 1px; }
   .input-zone textarea { min-height: 220px; height: max(220px, 38dvh); }
   .input-zone:focus-within { box-shadow: inset 4px 0 0 var(--amber), 0 0 0 3px rgba(200, 148, 62, 0.2), 0 12px 26px rgba(32, 51, 43, 0.11); }
   .pdf-preview-dialog__view-controls { order: -1; width: 100%; justify-content: center; }
+}
+
+/* 深色主題的可讀性覆寫：讓版面維持「安靜資料保管庫」的低眩光紙感與清楚文件邊界。 */
+.dark .app-shell, .dark .legal-page { background: var(--paper); color: var(--ink); }
+.dark .editor-card, .dark .result-card, .dark .privacy-panel, .dark .tip-panel, .dark .stats-panel, .dark .rule-group, .dark .legal-card, .dark .legal-section, .dark .consent-panel, .dark .consent-banner { background: rgba(28, 45, 37, 0.86); border-color: var(--line); box-shadow: 0 16px 45px rgba(0, 0, 0, 0.18); }
+.dark .input-zone, .dark .pdf-preview-dialog__document, .dark .pdf-preview-dialog__page-controls { background: rgba(20, 33, 27, 0.94); }
+.dark .input-zone:focus-within { background: rgba(28, 45, 37, 0.98); box-shadow: inset 4px 0 0 var(--amber), 0 0 0 3px rgba(226, 182, 96, 0.18), 0 16px 34px rgba(0, 0, 0, 0.25); }
+.dark .menu-popover, .dark .pdf-preview-dialog, .dark .pdf-preview-dialog__view-controls, .dark .pdf-preview-dialog__page-controls button, .dark .pdf-preview-dialog__mode, .dark .pdf-preview-dialog__fullscreen, .dark .pdf-preview-dialog__history-action, .dark .pdf-preview-dialog__view-controls select, .dark .pdf-preview-dialog__page-controls input, .dark .pdf-preview-dialog__color-picker { background: #1c2d25; color: var(--ink); border-color: var(--line); }
+.dark .pdf-visual-compare { background: #25342d; }
+.dark .pdf-page-sheet, .dark .pdf-visual-compare__review-hint, .dark .pdf-visual-compare__notice { background: rgba(28, 45, 37, 0.88); border-color: var(--line); color: var(--ink-soft); }
+.dark .pdf-preview-dialog__page-controls button:hover:not(:disabled), .dark .pdf-preview-dialog__mode:hover:not(:disabled), .dark .pdf-preview-dialog__fullscreen:hover:not(:disabled), .dark .pdf-preview-dialog__history-action:hover:not(:disabled) { background: var(--amber); color: #1c2d25; border-color: var(--amber); }
+.dark .pdf-preview-dialog [data-slot="dialog-description"], .dark .pdf-preview-dialog__meta, .dark .pdf-preview-dialog__status, .dark .clear-scope-note, .dark .editor-card__footer { color: var(--ink-soft); }
+
+/* 全螢幕或相容瀏覽器的專注閱讀回退，保持退出控制固定可見並使用裝置安全區。 */
+.pdf-preview-dialog:fullscreen, .pdf-preview-dialog--focus-reading { width: 100vw; max-width: none !important; height: 100dvh; max-height: none; display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; border: 0; border-radius: 0; box-shadow: none; background: var(--paper); }
+.pdf-preview-dialog--focus-reading { position: fixed !important; inset: 0 !important; z-index: 100 !important; transform: none !important; }
+.pdf-preview-dialog:fullscreen .pdf-preview-dialog__header, .pdf-preview-dialog--focus-reading .pdf-preview-dialog__header { padding-top: max(18px, env(safe-area-inset-top)); padding-bottom: 13px; }
+.pdf-preview-dialog:fullscreen .pdf-preview-dialog__header [data-slot="dialog-description"], .pdf-preview-dialog--focus-reading .pdf-preview-dialog__header [data-slot="dialog-description"], .pdf-preview-dialog:fullscreen .pdf-preview-dialog__meta, .pdf-preview-dialog--focus-reading .pdf-preview-dialog__meta { display: none; }
+.pdf-preview-dialog:fullscreen .pdf-preview-dialog__page-controls, .pdf-preview-dialog--focus-reading .pdf-preview-dialog__page-controls { position: sticky; top: 0; z-index: 4; }
+.pdf-preview-dialog:fullscreen .pdf-visual-compare, .pdf-preview-dialog--focus-reading .pdf-visual-compare { max-height: none; min-height: 0; }
+.pdf-preview-dialog:fullscreen .pdf-visual-compare__grid, .pdf-preview-dialog--focus-reading .pdf-visual-compare__grid { max-width: 1720px; width: 100%; margin: 0 auto; }
+.pdf-preview-dialog:fullscreen .pdf-preview-dialog__footer, .pdf-preview-dialog--focus-reading .pdf-preview-dialog__footer { padding-bottom: max(20px, env(safe-area-inset-bottom)); }
+
+@media (max-width: 760px) {
+  .pdf-preview-dialog:fullscreen .pdf-preview-dialog__header, .pdf-preview-dialog--focus-reading .pdf-preview-dialog__header { padding-left: 16px; padding-right: 16px; }
+  .pdf-preview-dialog:fullscreen .pdf-preview-dialog__page-controls, .pdf-preview-dialog--focus-reading .pdf-preview-dialog__page-controls { padding: 9px 12px; gap: 8px; }
+  .pdf-preview-dialog:fullscreen .pdf-preview-dialog__page-actions, .pdf-preview-dialog--focus-reading .pdf-preview-dialog__page-actions { justify-content: space-between; }
+  .pdf-preview-dialog:fullscreen .pdf-preview-dialog__fullscreen--reading, .pdf-preview-dialog--focus-reading .pdf-preview-dialog__fullscreen--reading { flex: 1 1 auto; min-height: 38px; }
+  .pdf-preview-dialog:fullscreen .pdf-visual-compare, .pdf-preview-dialog--focus-reading .pdf-visual-compare { padding: 12px; }
+  .pdf-preview-dialog:fullscreen .pdf-preview-dialog__footer, .pdf-preview-dialog--focus-reading .pdf-preview-dialog__footer { padding: 10px 16px max(14px, env(safe-area-inset-bottom)); }
 }

@@ -26,6 +26,7 @@ import {
   Menu,
   Maximize2,
   Minimize2,
+  Moon,
   Pencil,
   Redo2,
   ScanLine,
@@ -39,6 +40,7 @@ import {
   X,
   ZoomIn,
   ZoomOut,
+  Sun,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "wouter";
@@ -47,6 +49,7 @@ import ConsentBanner from "@/components/ConsentBanner";
 import DiffView from "@/components/DiffView";
 import PdfVisualCompare from "@/components/PdfVisualCompare";
 import { useReadingMode, type ReadingMode } from "@/contexts/ReadingModeContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -220,6 +223,7 @@ function PrivacyPanel() {
 
 export default function Home() {
   const { readingMode, setReadingMode } = useReadingMode();
+  const { theme, toggleTheme } = useTheme();
   const [input, setInput] = useState("");
   const [result, setResult] = useState("");
   const [activeStep, setActiveStep] = useState<Step>("source");
@@ -245,6 +249,7 @@ export default function Home() {
   const [pdfPreviewZoom, setPdfPreviewZoom] = useState(100);
   const [pdfPreviewTextSize, setPdfPreviewTextSize] = useState<(typeof PDF_TEXT_SIZE_OPTIONS)[number]["id"]>("standard");
   const [isPdfPreviewFullscreen, setIsPdfPreviewFullscreen] = useState(false);
+  const [isPdfFocusReading, setIsPdfFocusReading] = useState(false);
   const [manualReviewMode, setManualReviewMode] = useState(false);
   const [selectedPdfRedactionColor, setSelectedPdfRedactionColor] = useState<PdfRedactionColor>(DEFAULT_PDF_REDACTION_COLOR);
   const [pdfReviewHistory, setPdfReviewHistory] = useState(() => createPdfReviewHistory());
@@ -276,6 +281,7 @@ export default function Home() {
   const pdfPageCount = parsedDocument?.fileType === "pdf" ? Math.max(1, parsedDocument.pageCount ?? 1) : 1;
   const pdfReviewState = pdfReviewHistory.entries[pdfReviewHistory.index];
   const pdfPreviewTextScale = PDF_TEXT_SIZE_OPTIONS.find((option) => option.id === pdfPreviewTextSize)?.scale ?? 1;
+  const isPdfImmersiveReading = isPdfPreviewFullscreen || isPdfFocusReading;
   const canUndoPdfReview = pdfReviewHistory.index > 0;
   const canRedoPdfReview = pdfReviewHistory.index < pdfReviewHistory.entries.length - 1;
   const visibleRuleGroups = useMemo(() => {
@@ -291,7 +297,11 @@ export default function Home() {
   };
 
   useEffect(() => {
-    const handleFullscreenChange = () => setIsPdfPreviewFullscreen(document.fullscreenElement?.id === "pdf-preview-dialog");
+    const handleFullscreenChange = () => {
+      const isFullscreen = document.fullscreenElement?.id === "pdf-preview-dialog";
+      setIsPdfPreviewFullscreen(isFullscreen);
+      if (isFullscreen) setIsPdfFocusReading(false);
+    };
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
   }, []);
@@ -473,6 +483,7 @@ export default function Home() {
       setPdfPreviewPage(1);
       setPdfPreviewZoom(100);
       setPdfPreviewTextSize("standard");
+      setIsPdfFocusReading(false);
       setPdfPreviewOpen(true);
       return;
     }
@@ -515,11 +526,17 @@ export default function Home() {
     try {
       if (document.fullscreenElement) {
         await document.exitFullscreen();
-      } else {
+      } else if (isPdfFocusReading) {
+        setIsPdfFocusReading(false);
+      } else if (document.fullscreenEnabled && dialog.requestFullscreen) {
         await dialog.requestFullscreen();
+      } else {
+        setIsPdfFocusReading(true);
+        toast.info("已開啟專注閱讀模式。此瀏覽器會保留系統列，仍可獲得完整預覽空間。");
       }
     } catch {
-      toast.error("目前瀏覽器無法切換全螢幕模式，請確認瀏覽器權限後再試一次。");
+      setIsPdfFocusReading(true);
+      toast.info("已開啟專注閱讀模式。此瀏覽器不支援完整全螢幕，仍可在不受干擾的版面檢視 PDF。");
     }
   };
 
@@ -563,6 +580,18 @@ export default function Home() {
                 <span className="reading-mode-switch__short-label">{option.shortLabel}</span>
               </button>
             ))}
+            <span className="reading-mode-switch__divider" aria-hidden="true" />
+            <button
+              type="button"
+              className={theme === "dark" ? "reading-mode-switch__theme reading-mode-switch__theme--active" : "reading-mode-switch__theme"}
+              onClick={() => toggleTheme?.()}
+              aria-pressed={theme === "dark"}
+              aria-label={theme === "dark" ? "切換為淺色模式" : "切換為深色模式"}
+              title={theme === "dark" ? "切換為淺色模式" : "切換為深色模式"}
+            >
+              {theme === "dark" ? <Sun size={14} aria-hidden="true" /> : <Moon size={14} aria-hidden="true" />}
+              <span className="reading-mode-switch__theme-label">{theme === "dark" ? "淺色" : "深色"}</span>
+            </button>
           </div>
           <div className="secure-pill"><ShieldCheck size={15} /> <span>LOCAL ONLY</span></div>
           <button className="icon-button menu-trigger" onClick={() => setMenuOpen((open) => !open)} aria-label="開啟選單" aria-expanded={menuOpen}>
@@ -746,8 +775,8 @@ export default function Home() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <Dialog open={pdfPreviewOpen} onOpenChange={(open) => { if (!isPdfExporting) { if (!open && document.fullscreenElement) void document.exitFullscreen(); setPdfPreviewOpen(open); } }}>
-        <DialogContent id="pdf-preview-dialog" className={`pdf-preview-dialog ${isPdfPreviewFullscreen ? "pdf-preview-dialog--fullscreen" : ""}`} aria-busy={isPdfExporting} onEscapeKeyDown={(event) => { if (document.fullscreenElement) { event.preventDefault(); void document.exitFullscreen(); } }}>
+      <Dialog open={pdfPreviewOpen} onOpenChange={(open) => { if (!isPdfExporting) { if (!open && document.fullscreenElement) void document.exitFullscreen(); if (!open) setIsPdfFocusReading(false); setPdfPreviewOpen(open); } }}>
+        <DialogContent id="pdf-preview-dialog" className={`pdf-preview-dialog ${isPdfImmersiveReading ? "pdf-preview-dialog--fullscreen" : ""} ${isPdfFocusReading ? "pdf-preview-dialog--focus-reading" : ""}`} aria-busy={isPdfExporting} onEscapeKeyDown={(event) => { if (document.fullscreenElement || isPdfFocusReading) { event.preventDefault(); if (document.fullscreenElement) void document.exitFullscreen(); setIsPdfFocusReading(false); } }}>
           <DialogHeader className="pdf-preview-dialog__header">
             <span className="pdf-preview-dialog__kicker">PDF / LOCAL PREVIEW</span>
             <DialogTitle>下載前檢查原始版面</DialogTitle>
@@ -781,7 +810,7 @@ export default function Home() {
                   </div>}
                   <button type="button" className="pdf-preview-dialog__history-action" onClick={() => setPdfReviewHistory((history) => undoPdfReviewHistory(history))} disabled={isPdfExporting || !canUndoPdfReview} aria-label="復原上一個遮罩編輯" title="復原（Ctrl 或 Command + Z）"><Undo2 size={15} /><span>復原</span></button>
                   <button type="button" className="pdf-preview-dialog__history-action" onClick={() => setPdfReviewHistory((history) => redoPdfReviewHistory(history))} disabled={isPdfExporting || !canRedoPdfReview} aria-label="重做下一個遮罩編輯" title="重做（Ctrl 或 Command + Shift + Z）"><Redo2 size={15} /><span>重做</span></button>
-                  <button type="button" className="pdf-preview-dialog__fullscreen" onClick={togglePdfPreviewFullscreen} disabled={isPdfExporting} aria-label={isPdfPreviewFullscreen ? "離開全螢幕模式" : "開啟全螢幕模式"} title={isPdfPreviewFullscreen ? "離開全螢幕（Esc）" : "全螢幕檢閱"}>{isPdfPreviewFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}<span>{isPdfPreviewFullscreen ? "離開全螢幕" : "全螢幕"}</span></button>
+                  <button type="button" className="pdf-preview-dialog__fullscreen pdf-preview-dialog__fullscreen--reading" onClick={togglePdfPreviewFullscreen} disabled={isPdfExporting} aria-label={isPdfImmersiveReading ? "結束全螢幕閱讀" : "開啟全螢幕閱讀"} title={isPdfImmersiveReading ? "結束全螢幕閱讀（Esc）" : "開啟全螢幕閱讀"}>{isPdfImmersiveReading ? <Minimize2 size={15} /> : <Maximize2 size={15} />}<span>{isPdfImmersiveReading ? "結束閱讀" : "全螢幕閱讀"}</span></button>
                 </div>
               </div>
               <PdfVisualCompare file={sourcePdfFile} pageNumber={pdfPreviewPage} enabledRules={enabledRules} customTerms={customTerms} zoomPercent={pdfPreviewZoom} textScale={pdfPreviewTextScale} manualReviewMode={manualReviewMode} selectedRedactionColor={selectedPdfRedactionColor} reviewState={pdfReviewState} onReviewStateChange={(state) => setPdfReviewHistory((history) => recordPdfReviewState(history, state))} />
