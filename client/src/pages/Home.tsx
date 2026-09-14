@@ -303,6 +303,7 @@ export default function Home() {
   const [selectedPdfRedactionColor, setSelectedPdfRedactionColor] = useState<PdfRedactionColor>(DEFAULT_PDF_REDACTION_COLOR);
   const [pdfReviewHistory, setPdfReviewHistory] = useState(() => createPdfReviewHistory());
   const [isPdfExporting, setIsPdfExporting] = useState(false);
+  const [exportingFormat, setExportingFormat] = useState<"docx" | "txt" | "xlsx" | "pdf" | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dictionaryInputRef = useRef<HTMLInputElement>(null);
   const parseControllerRef = useRef<AbortController | null>(null);
@@ -549,6 +550,49 @@ export default function Home() {
     toast.success("去識別化結果已複製到剪貼簿。");
   };
 
+  const handleExport = async (format: "docx" | "txt" | "xlsx" | "pdf") => {
+    if (!result || exportingFormat || isPdfExporting) return;
+    setExportingFormat(format);
+    if (format === "pdf") setIsPdfExporting(true);
+    setActiveStep("download");
+    try {
+      if (format === "pdf") {
+        if (sourcePdfFile) {
+          await exportPdf(result, fileName, {
+            sourcePdfFile,
+            enabledRules,
+            customTerms,
+            redactionEdits: pdfReviewState.redactionEdits,
+            hiddenRedactionIds: pdfReviewState.hiddenRedactionIds,
+            selectedRedactionColor: selectedPdfRedactionColor,
+          });
+          toast.success("去識別化 PDF 已成功下載。", {
+            description: "檔案已由本機產生，請至瀏覽器下載位置查看。",
+          });
+        } else {
+          await exportPdf(result, fileName);
+          toast.success("PDF 文件已成功下載。", {
+            description: "已由本機排版產出，請至瀏覽器下載位置查看。",
+          });
+        }
+      } else if (format === "docx") {
+        await exportWord(result, fileName);
+        toast.success("Word 文件 (.docx) 已成功下載。");
+      } else if (format === "xlsx") {
+        await exportSpreadsheet(result, fileName);
+        toast.success("Excel 試算表 (.xlsx) 已成功下載。");
+      } else if (format === "txt") {
+        downloadTextResult(result, fileName);
+        toast.success("純文字檔 (.txt) 已成功下載。");
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "下載失敗，請確認瀏覽器允許下載後再試一次。");
+    } finally {
+      setExportingFormat(null);
+      if (format === "pdf") setIsPdfExporting(false);
+    }
+  };
+
   const downloadResult = () => {
     if (!result) return;
     const fileType = parsedDocument?.fileType ?? "text";
@@ -562,19 +606,13 @@ export default function Home() {
       return;
     }
     setActiveStep("download");
-    const exportTask = fileType === "xlsx"
-      ? exportSpreadsheet(result, fileName)
-      : fileType === "docx"
-        ? exportWord(result, fileName)
-        : downloadTextResult(result, fileName);
-    Promise.resolve(exportTask)
-      .then(() => toast.success("結果已由本機產生並準備下載。"))
-      .catch(() => toast.error("本機匯出失敗，請確認瀏覽器允許下載後再試一次。"));
+    void handleExport(fileType === "xlsx" ? "xlsx" : fileType === "docx" ? "docx" : "txt");
   };
 
   const confirmPdfDownload = async () => {
     if (!result || isPdfExporting) return;
     setIsPdfExporting(true);
+    setExportingFormat("pdf");
     try {
       await exportPdf(result, fileName, {
         sourcePdfFile,
@@ -593,6 +631,7 @@ export default function Home() {
       toast.error(error instanceof Error ? error.message : "PDF 匯出失敗，請確認瀏覽器允許下載後再試一次。");
     } finally {
       setIsPdfExporting(false);
+      setExportingFormat(null);
     }
   };
 
@@ -846,17 +885,17 @@ export default function Home() {
           type="button"
           className="wizard-download-card__primary-btn"
           onClick={downloadResult}
-          disabled={isPdfExporting}
+          disabled={Boolean(exportingFormat) || isPdfExporting}
         >
-          {isPdfExporting ? <LoaderCircle className="spin" size={20} /> : <ArrowDownToLine size={20} />}
+          {(isPdfExporting || exportingFormat) ? <LoaderCircle className="spin" size={20} /> : <ArrowDownToLine size={20} />}
           <span>
             {sourcePdfFile
               ? (isPdfExporting ? "本機 PDF 產生中…" : "下載去識別化 PDF")
               : parsedDocument?.fileType === "xlsx"
-                ? "下載 Excel 試算表 (.xlsx)"
+                ? "下載來源格式 Excel (.xlsx)"
                 : parsedDocument?.fileType === "docx"
-                  ? "下載 Word 文件 (.docx)"
-                  : "下載 TXT 文字檔 (.txt)"}
+                  ? "下載來源格式 Word (.docx)"
+                  : "下載來源格式 TXT (.txt)"}
           </span>
         </button>
         <button
@@ -881,6 +920,61 @@ export default function Home() {
             <span>開啟 PDF 預覽與手動遮罩</span>
           </button>
         )}
+      </div>
+
+      <div className="wizard-download-card__formats-section">
+        <div className="wizard-download-card__formats-title">
+          <span>自由選擇匯出格式：</span>
+        </div>
+        <div className="wizard-download-card__format-buttons">
+          <button
+            type="button"
+            className={`wizard-download-card__format-btn ${parsedDocument?.fileType === "docx" ? "is-source" : ""}`}
+            onClick={() => handleExport("docx")}
+            disabled={Boolean(exportingFormat) || isPdfExporting}
+            title="匯出為微軟 Word 格式 (.docx)"
+          >
+            {exportingFormat === "docx" ? <LoaderCircle className="spin" size={16} /> : <FileType2 size={16} />}
+            <span>Word 文件 (.docx)</span>
+            {parsedDocument?.fileType === "docx" && <span className="format-badge">來源</span>}
+          </button>
+
+          <button
+            type="button"
+            className={`wizard-download-card__format-btn ${(!parsedDocument || parsedDocument.fileType === "text") ? "is-source" : ""}`}
+            onClick={() => handleExport("txt")}
+            disabled={Boolean(exportingFormat) || isPdfExporting}
+            title="匯出為 UTF-8 純文字檔 (.txt)"
+          >
+            {exportingFormat === "txt" ? <LoaderCircle className="spin" size={16} /> : <FileText size={16} />}
+            <span>純文字檔 (.txt)</span>
+            {(!parsedDocument || parsedDocument.fileType === "text") && <span className="format-badge">來源</span>}
+          </button>
+
+          <button
+            type="button"
+            className={`wizard-download-card__format-btn ${parsedDocument?.fileType === "xlsx" ? "is-source" : ""}`}
+            onClick={() => handleExport("xlsx")}
+            disabled={Boolean(exportingFormat) || isPdfExporting}
+            title="匯出為 Excel 試算表格式 (.xlsx)"
+          >
+            {exportingFormat === "xlsx" ? <LoaderCircle className="spin" size={16} /> : <FileSpreadsheet size={16} />}
+            <span>Excel 試算表 (.xlsx)</span>
+            {parsedDocument?.fileType === "xlsx" && <span className="format-badge">來源</span>}
+          </button>
+
+          <button
+            type="button"
+            className={`wizard-download-card__format-btn ${parsedDocument?.fileType === "pdf" ? "is-source" : ""}`}
+            onClick={() => handleExport("pdf")}
+            disabled={Boolean(exportingFormat) || isPdfExporting}
+            title="匯出為 PDF 檔案 (.pdf)"
+          >
+            {exportingFormat === "pdf" ? <LoaderCircle className="spin" size={16} /> : <FileOutput size={16} />}
+            <span>PDF 文件 (.pdf)</span>
+            {parsedDocument?.fileType === "pdf" && <span className="format-badge">來源</span>}
+          </button>
+        </div>
       </div>
 
       <div className="wizard-download-card__stats">
