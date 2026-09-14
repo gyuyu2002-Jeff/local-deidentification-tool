@@ -168,10 +168,14 @@ function StepRail({
   activeStep,
   onSelectStep,
   canNavigateToStep,
+  viewMode,
+  onToggleViewMode,
 }: {
   activeStep: Step;
   onSelectStep: (step: Step) => void;
   canNavigateToStep: (step: Step) => boolean;
+  viewMode: "wizard" | "all";
+  onToggleViewMode: (mode: "wizard" | "all") => void;
 }) {
   const steps: { id: Step; number: string; label: string; hint: string }[] = [
     { id: "source", number: "01", label: "放入資料", hint: "貼上或讀取檔案" },
@@ -213,6 +217,29 @@ function StepRail({
           );
         })}
       </nav>
+      <div className="step-rail__view-mode" style={{ marginTop: "24px" }}>
+        <span className="eyebrow">VIEW MODE</span>
+        <div className="view-mode-toggle" style={{ marginTop: "8px", width: "100%", display: "flex" }}>
+          <button
+            type="button"
+            className={`view-mode-toggle__btn ${viewMode === "wizard" ? "view-mode-toggle__btn--active" : ""}`}
+            onClick={() => onToggleViewMode("wizard")}
+            style={{ flex: 1, justifyContent: "center" }}
+            title="一步一個頁面，專注目前步驟"
+          >
+            一步一頁
+          </button>
+          <button
+            type="button"
+            className={`view-mode-toggle__btn ${viewMode === "all" ? "view-mode-toggle__btn--active" : ""}`}
+            onClick={() => onToggleViewMode("all")}
+            style={{ flex: 1, justifyContent: "center" }}
+            title="長頁面展開所有面板"
+          >
+            全部展開
+          </button>
+        </div>
+      </div>
       <div className="step-rail__footer">
         <LockKeyhole size={16} />
         <p><strong>本機模式</strong><br />不建立雲端副本，不傳送原文。</p>
@@ -246,6 +273,8 @@ export default function Home() {
   const [input, setInput] = useState("");
   const [result, setResult] = useState("");
   const [activeStep, setActiveStep] = useState<Step>("source");
+  const [viewMode, setViewMode] = useState<"wizard" | "all">("wizard");
+  const [reviewTab, setReviewTab] = useState<"diff" | "text">("diff");
   const [enabledRules, setEnabledRules] = useState<RuleId[]>(ALL_RULE_IDS);
   const [ruleSearch, setRuleSearch] = useState("");
   const [expandedRuleGroups, setExpandedRuleGroups] = useState<RuleGroupId[]>([]);
@@ -380,8 +409,14 @@ export default function Home() {
     const next = deidentifyText(input, enabledRules, customTerms);
     setResult(next.text);
     setShowDiff(true);
+    setReviewTab("diff");
     setActiveStep("review");
-    toast.success(`已完成 ${next.total} 處替換，原文仍只存在本機。`);
+    if (viewMode === "all") {
+      window.requestAnimationFrame(() => resultSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    } else {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+    toast.success(`已完成 ${next.total} 處替換，進入步驟 03 檢查遮罩。`);
   };
 
   const handleFile = async (file?: File) => {
@@ -404,7 +439,8 @@ export default function Home() {
       setResult("");
       setShowDiff(false);
       setActiveStep("rules");
-      toast.success(`已在本機解析 ${file.name}。`);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      toast.success(`已在本機解析 ${file.name}，進入步驟 02 選擇規則。`);
     } catch (error) {
       if (error instanceof DocumentParseCancelledError) {
         const message = "已取消本機解析；原始文字尚未匯入工作區。";
@@ -591,13 +627,18 @@ export default function Home() {
     setResult("");
     setShowDiff(false);
     setActiveStep("rules");
-    toast.success("已載入範例資料；這段內容只用於展示介面。");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    toast.success("已載入範例資料，已切換至步驟 02 選擇規則。");
   };
 
   const continueToRules = () => {
     if (!input.trim()) return;
     setActiveStep("rules");
-    window.requestAnimationFrame(() => rulesSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    if (viewMode === "all") {
+      window.requestAnimationFrame(() => rulesSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    } else {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   };
 
   const isSourceReady = input.trim().length > 0 || parsedDocument !== null;
@@ -626,22 +667,264 @@ export default function Home() {
       return;
     }
     setActiveStep(step);
-    if (step === "source") {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    } else if (step === "rules") {
-      rulesSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    } else if (step === "review") {
-      if (sourcePdfFile) {
-        setPdfPreviewPage(1);
-        setPdfPreviewZoom(100);
-        setPdfPreviewOpen(true);
-      } else {
+    if (viewMode === "all") {
+      if (step === "source") {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } else if (step === "rules") {
+        rulesSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      } else if (step === "review") {
+        if (sourcePdfFile) {
+          setPdfPreviewPage(1);
+          setPdfPreviewZoom(100);
+          setPdfPreviewOpen(true);
+        } else {
+          resultSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      } else if (step === "download") {
         resultSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       }
-    } else if (step === "download") {
-      resultSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    } else {
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
+
+  const renderSourceCard = () => (
+    <div className="editor-card rise-in" style={{ animationDelay: "70ms" }}>
+      <div className="editor-card__header">
+        <div className="editor-card__title"><span className="section-index">A</span><span>原始資料</span></div>
+        <div className="editor-card__tools">
+          <button className="text-button" onClick={loadExample}><Sparkles size={14} /> 載入範例</button>
+          <button className="text-button text-button--quiet clear-workspace-button" onClick={() => setClearConfirmOpen(true)} title="清除原文、結果、檔案資訊、OCR 狀態與自訂關鍵字"><Trash2 size={14} /> 清除工作區</button>
+        </div>
+      </div>
+      <div
+        className={`input-zone ${isDragging ? "input-zone--dragging" : ""}`}
+        onDragOver={(event) => { event.preventDefault(); setIsDragging(true); }}
+        onDragLeave={() => setIsDragging(false)}
+        onDrop={(event) => { event.preventDefault(); setIsDragging(false); handleFile(event.dataTransfer.files?.[0]); }}
+      >
+        <textarea
+          value={input}
+          onChange={(event) => { setInput(event.target.value); setResult(""); }}
+          onFocus={(event) => revealMobileInput(event.currentTarget)}
+          placeholder="將需要處理的文字貼到這裡…"
+          aria-label="原始資料輸入區"
+        />
+        {!input && (
+          <div className="input-zone__empty">
+            <div className="empty-icon"><FileText size={21} /></div>
+            <strong>尚未放入資料</strong>
+            <span>支援 TXT、CSV、JSON、Excel、Word、PDF 與掃描 PDF</span>
+            <button className="upload-button" onClick={() => fileInputRef.current?.click()} disabled={isParsing}>{isParsing ? <LoaderCircle className="spin" size={15} /> : <Upload size={15} />} {isParsing ? "本機解析中" : "選取檔案"}</button>
+            <input ref={fileInputRef} type="file" accept=".txt,.csv,.json,.xlsx,.xls,.docx,.pdf,text/plain,text/csv,application/json,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(event) => handleFile(event.target.files?.[0])} hidden />
+          </div>
+        )}
+      </div>
+      {isParsing && parseProgress && (
+        <div className="ocr-progress" role="status" aria-live="polite">
+          <div className="ocr-progress__header">
+            <span className="ocr-progress__copy"><LoaderCircle className="spin" size={14} /><span><strong>{progressTitle}</strong><small>{parseProgress.message}</small></span></span>
+            <span className="ocr-progress__controls"><span className="ocr-progress__percent">{parseProgress.percent}%</span><button className="text-button ocr-progress__cancel" onClick={cancelParsing} disabled={isCancelling}>{isCancelling ? "正在取消" : "取消處理"} <X size={13} /></button></span>
+          </div>
+          <div className="ocr-progress__meta"><span>{progressPageLabel}</span><span>{parseProgress.detail}</span></div>
+          <div className="ocr-progress__track" role="progressbar" aria-label="PDF 本機 OCR 進度" aria-valuenow={parseProgress.percent} aria-valuemin={0} aria-valuemax={100}><span style={{ width: `${parseProgress.percent}%` }} /></div>
+        </div>
+      )}
+      <div className="editor-card__footer">
+        <span>{fileName ? <><FolderOpen size={14} /> {fileName} {parsedDocument?.fileType === "xlsx" ? <FileSpreadsheet size={13} /> : parsedDocument?.fileType === "docx" ? <FileType2 size={13} /> : parsedDocument?.fileType === "pdf" ? <FileOutput size={13} /> : null}</> : <><LockKeyhole size={14} /> 只在瀏覽器記憶體中處理</>}</span>
+        <span>{countCharacters(input)} 字元</span>
+      </div>
+      <div className="clear-scope-note"><Info size={13} /> 清除會移除工作區記憶體中的原文、結果、檔案資訊、OCR 狀態與自訂關鍵字；不影響已下載的結果檔。</div>
+      {parseError && <div className={parseError.startsWith("已取消") ? "parse-warning parse-cancelled" : "parse-error"}><Info size={14} /> {parseError}</div>}
+      {parsedDocument?.warnings.map((warning) => <div className={`parse-warning ${warning.includes("本機使用繁體中文 OCR") ? "parse-warning--ocr" : ""}`} key={warning}><Info size={14} /> {warning}</div>)}
+    </div>
+  );
+
+  const renderRulesSection = () => (
+    <section ref={rulesSectionRef} className="rules-section rise-in" style={{ animationDelay: "140ms" }}>
+      <div className="section-heading">
+        <div><span className="section-index">B</span><h2>去識別化規則</h2></div>
+        <div className="section-heading__actions">
+          <span className="rule-count">{enabledRules.length} / {DEFAULT_RULES.length} 啟用</span>
+          <button className="text-button quick-toggle" onClick={() => setAllRules(true)} disabled={enabledRules.length === DEFAULT_RULES.length}>全選</button>
+          <button className="text-button quick-toggle text-button--quiet" onClick={() => setAllRules(false)} disabled={enabledRules.length === 0}>全不選</button>
+        </div>
+      </div>
+      <div className="rule-selector">
+        <div className="rule-selector__toolbar">
+          <label className="rule-search">
+            <Search size={15} aria-hidden="true" />
+            <span className="sr-only">搜尋去識別化規則</span>
+            <input value={ruleSearch} onChange={(event) => setRuleSearch(event.target.value)} placeholder="搜尋規則，例如：姓名、電話、數字" />
+            {ruleSearch && <button type="button" onClick={() => setRuleSearch("")} aria-label="清除規則搜尋"><X size={14} /></button>}
+          </label>
+          <span className="rule-selector__hint">可收合分組 · {visibleRuleGroups.reduce((total, group) => total + group.rules.length, 0)} 項可見</span>
+        </div>
+        <div className="rule-groups">
+          {visibleRuleGroups.map((group) => {
+            const expanded = ruleSearch.trim().length > 0 || expandedRuleGroups.includes(group.id);
+            const enabledCount = group.ruleIds.filter((id) => enabledRules.includes(id)).length;
+            const allEnabled = group.ruleIds.length > 0 && enabledCount === group.ruleIds.length;
+            const partiallyEnabled = enabledCount > 0 && !allEnabled;
+            return (
+              <section className={`rule-group ${expanded ? "rule-group--expanded" : ""} ${allEnabled ? "rule-group--all-enabled" : ""} ${partiallyEnabled ? "rule-group--partial" : ""}`} key={group.id}>
+                <button type="button" className="rule-group__toggle" onClick={() => toggleRuleGroup(group.id)} aria-expanded={expanded}>
+                  <span className="rule-group__marker" aria-hidden="true">{allEnabled ? <Check size={8} strokeWidth={3} /> : partiallyEnabled ? <span className="rule-group__marker-dot" /> : null}</span>
+                  <span className="rule-group__name"><strong>{group.label}</strong><small>{group.detail}</small></span>
+                  <span className="rule-group__count">{enabledCount} / {group.ruleIds.length}</span>
+                  <ChevronDown className="rule-group__chevron" size={15} aria-hidden="true" />
+                </button>
+                <div className={`rule-option-list ${expanded ? "rule-option-list--open" : ""}`} aria-hidden={!expanded}>
+                  <div className="rule-option-list__inner">
+                   {group.rules.map((rule) => {
+                    const enabled = enabledRules.includes(rule.id);
+                    return (
+                      <button type="button" className={`rule-option ${enabled ? "rule-option--enabled" : ""}`} key={rule.id} onClick={() => toggleRule(rule.id)} aria-pressed={enabled}>
+                        <span className="rule-option__icon" aria-hidden="true">{RULE_ICONS[rule.id]}</span>
+                        <span className="rule-option__text"><strong>{rule.label}</strong><small>{rule.detail}</small></span>
+                        <span className="rule-option__check" aria-hidden="true">{enabled ? <Check size={12} /> : <span />}</span>
+                      </button>
+                    );
+                   })}
+                  </div>
+                </div>
+              </section>
+            );
+          })}
+        </div>
+        {visibleRuleGroups.length === 0 && <p className="rule-selector__empty">找不到相符規則，請改用其他關鍵字。</p>}
+      </div>
+      <div className="custom-rule">
+        <div className="custom-rule__topline"><div className="custom-rule__label"><Fingerprint size={17} /><span><strong>自訂關鍵字</strong><small>例如：專案名稱、內部代號、客戶姓名</small></span></div><div className="custom-rule__dictionary-actions"><button className="text-button" onClick={exportDictionary} disabled={!customTerms.length}><ArrowDownToLine size={13} /> 匯出字典</button><button className="text-button text-button--quiet" onClick={() => dictionaryInputRef.current?.click()}><Upload size={13} /> 匯入字典</button><input ref={dictionaryInputRef} type="file" accept="application/json,.json" onChange={(event) => importDictionary(event.target.files?.[0])} hidden /></div></div>
+        <div className="custom-rule__input"><input value={customInput} onChange={(event) => setCustomInput(event.target.value)} onFocus={(event) => revealMobileInput(event.currentTarget)} onKeyDown={(event) => { if (event.key === "Enter") addCustomTerm(); }} placeholder="輸入後按 Enter，可用逗號分隔" /><button onClick={addCustomTerm} aria-label="新增自訂關鍵字">新增</button></div>
+        {customTerms.length > 0 && <div className="term-list">{customTerms.map((term) => <span key={term}>{term}<button onClick={() => { setCustomTerms((current) => current.filter((item) => item !== term)); setResult(""); }} aria-label={`移除 ${term}`}><X size={12} /></button></span>)}</div>}
+      </div>
+      <div className="workflow-execution-summary" aria-live="polite"><ShieldCheck size={15} /><span><strong>執行前摘要</strong> 已啟用 {enabledRules.length} 項規則{customTerms.length > 0 ? `，另有 ${customTerms.length} 個自訂關鍵字` : "，尚未加入自訂關鍵字"}。</span></div>
+      {viewMode === "all" && (
+        <div className="action-row"><span className="action-row__hint"><ScanLine size={16} /> {input ? "規則會在本機即時比對，執行前可隨時調整。" : "放入資料後即可開始設定規則。"}</span><span className="action-row__seal"><LockKeyhole size={13} /> LOCAL ONLY · 執行前確認</span><button className="primary-button" onClick={processText} disabled={!input.trim()}><FileCheck2 size={17} /> 已啟用 {enabledRules.length} 項規則 · 執行去識別化 <ChevronRight size={16} /></button></div>
+      )}
+    </section>
+  );
+
+  const renderReviewSection = () => (
+    <div ref={resultSectionRef} className="result-card rise-in">
+      <div className="result-card__header"><div className="editor-card__title"><span className="section-index section-index--amber">C</span><span>覆核結果</span><span className="done-label"><CheckCircle2 size={14} /> 已完成</span></div><div className="result-card__actions"><span className="result-seal"><LockKeyhole size={12} /> LOCAL ONLY · 匯出前可預覽</span><button className="text-button" onClick={copyResult}>{copied ? <Check size={14} /> : <Clipboard size={14} />} {copied ? "已複製" : "複製結果"}</button><button className="text-button" onClick={() => setShowDiff((open) => !open)}><FileDiff size={14} /> {showDiff ? "隱藏差異" : "查看差異"}</button></div></div>
+      <div className="review-checklist" aria-label="覆核清單">
+        <span><CheckCircle2 size={15} /><strong>已遮蔽 {resultStats.total} 處</strong><small>自動規則已套用</small></span>
+        <span><Pencil size={15} /><strong>手動遮蔽 {manualRedactionCount} 處</strong><small>{sourcePdfFile ? "可在 PDF 預覽中新增或調整" : "此格式可直接檢查文字差異"}</small></span>
+        <span><FileDiff size={15} /><strong>建議：{sourcePdfFile ? "開啟 PDF 預覽確認" : "查看差異確認"}</strong><small>確認無遺漏後再下載</small></span>
+      </div>
+      <pre className="result-preview">{result}</pre>
+      <div className="result-summary"><span><strong>{resultStats.total}</strong> 處內容已替換</span><span>輸入 {countCharacters(input)} 字元</span><span>輸出 {countCharacters(result)} 字元</span></div>
+      <section className="workflow-prompt workflow-prompt--review" aria-label={sourcePdfFile ? "下一步：開啟 PDF 預覽" : "下一步：下載結果"}>
+        <span className="workflow-prompt__marker" aria-hidden="true">03</span>
+        <div className="workflow-prompt__copy">
+          <span className="workflow-prompt__eyebrow">覆核摘要</span>
+          <strong>已替換 {resultStats.total} 處內容{manualRedactionCount > 0 ? `，含 ${manualRedactionCount} 處手動遮蔽` : ""}。</strong>
+          <small>{sourcePdfFile ? "建議先開啟原始版面比對，確認遮罩位置與範圍。" : "確認差異後，即可由本機產生最終結果檔。"}</small>
+        </div>
+        <button type="button" className="workflow-prompt__action workflow-prompt__action--primary" onClick={downloadResult} aria-haspopup={sourcePdfFile ? "dialog" : undefined}>{sourcePdfFile ? <>開啟 PDF 預覽 <ChevronRight size={16} /></> : <>下載結果 <ArrowDownToLine size={16} /></>}</button>
+      </section>
+    </div>
+  );
+
+  const renderDownloadSection = () => (
+    <div className="wizard-download-card rise-in">
+      <div className="wizard-download-card__hero">
+        <div className="wizard-download-card__icon">
+          <CheckCircle2 size={32} />
+        </div>
+        <h2>去識別化處理完成</h2>
+        <p>
+          所有個資替換與版面遮罩均在本機端記憶體即時計算完畢，無任何資料外洩風險。請點選下方按鈕下載結果檔。
+        </p>
+      </div>
+
+      <div className="wizard-download-card__actions">
+        <button
+          type="button"
+          className="wizard-download-card__primary-btn"
+          onClick={downloadResult}
+          disabled={isPdfExporting}
+        >
+          {isPdfExporting ? <LoaderCircle className="spin" size={20} /> : <ArrowDownToLine size={20} />}
+          <span>
+            {sourcePdfFile
+              ? (isPdfExporting ? "本機 PDF 產生中…" : "下載去識別化 PDF")
+              : parsedDocument?.fileType === "xlsx"
+                ? "下載 Excel 試算表 (.xlsx)"
+                : parsedDocument?.fileType === "docx"
+                  ? "下載 Word 文件 (.docx)"
+                  : "下載 TXT 文字檔 (.txt)"}
+          </span>
+        </button>
+        <button
+          type="button"
+          className="wizard-download-card__copy-btn"
+          onClick={copyResult}
+        >
+          {copied ? <Check size={18} /> : <Clipboard size={18} />}
+          <span>{copied ? "結果已複製" : "複製結果文字"}</span>
+        </button>
+        {sourcePdfFile && (
+          <button
+            type="button"
+            className="wizard-download-card__copy-btn"
+            onClick={() => {
+              setPdfPreviewPage(1);
+              setPdfPreviewZoom(100);
+              setPdfPreviewOpen(true);
+            }}
+          >
+            <FileOutput size={18} />
+            <span>開啟 PDF 預覽與手動遮罩</span>
+          </button>
+        )}
+      </div>
+
+      <div className="wizard-download-card__stats">
+        <div className="wizard-download-card__stat-item">
+          <span>替換項目</span>
+          <strong>{resultStats.total} 處</strong>
+        </div>
+        <div className="wizard-download-card__stat-item">
+          <span>輸入字數</span>
+          <strong>{countCharacters(input)} 字</strong>
+        </div>
+        <div className="wizard-download-card__stat-item">
+          <span>輸出字數</span>
+          <strong>{countCharacters(result)} 字</strong>
+        </div>
+        <div className="wizard-download-card__stat-item">
+          <span>檔案格式</span>
+          <strong>{sourceTypeLabel}</strong>
+        </div>
+        <div className="wizard-download-card__stat-item">
+          <span>資安模式</span>
+          <strong style={{ color: "var(--amber)" }}>LOCAL ONLY</strong>
+        </div>
+      </div>
+
+      <div className="wizard-download-card__preview">
+        <div className="wizard-download-card__preview-header">
+          <span>結果預覽（已遮蔽完成）</span>
+          <button
+            type="button"
+            className="text-button"
+            onClick={() => {
+              setActiveStep("review");
+              setReviewTab("diff");
+            }}
+          >
+            <FileDiff size={13} /> 回步驟 3 檢視差異
+          </button>
+        </div>
+        <pre className="result-preview" style={{ maxHeight: "180px", overflow: "auto" }}>
+          {result}
+        </pre>
+      </div>
+    </div>
+  );
 
   return (
     <div className="app-shell">
@@ -711,6 +994,8 @@ export default function Home() {
           activeStep={activeStep}
           onSelectStep={navigateToStep}
           canNavigateToStep={canNavigateToStep}
+          viewMode={viewMode}
+          onToggleViewMode={setViewMode}
         />
 
         <section className="workbench">
@@ -737,20 +1022,45 @@ export default function Home() {
               )}
               {activeStep === "source" && isSourceReady && (
                 <button type="button" className="mobile-workflow-bar__btn mobile-workflow-bar__btn--primary" onClick={() => navigateToStep("rules")}>
-                  下一步：選規則 <ChevronRight size={13} />
+                  選規則 <ChevronRight size={13} />
                 </button>
               )}
-              {activeStep === "rules" && isReviewReady && (
-                <button type="button" className="mobile-workflow-bar__btn mobile-workflow-bar__btn--primary" onClick={() => navigateToStep("review")}>
-                  下一步：看遮罩 <ChevronRight size={13} />
+              {activeStep === "rules" && (
+                <button type="button" className="mobile-workflow-bar__btn mobile-workflow-bar__btn--primary" disabled={!input.trim()} onClick={processText}>
+                  去識別化 <ChevronRight size={13} />
                 </button>
               )}
               {activeStep === "review" && (
                 <button type="button" className="mobile-workflow-bar__btn mobile-workflow-bar__btn--primary" onClick={() => navigateToStep("download")}>
-                  下一步：下載 <ArrowDownToLine size={13} />
+                  去下載 <ArrowDownToLine size={13} />
                 </button>
               )}
             </div>
+          </div>
+
+          <div className="workbench__view-mode-bar">
+            <div className="view-mode-toggle" role="group" aria-label="工作視圖模式">
+              <button
+                type="button"
+                className={`view-mode-toggle__btn ${viewMode === "wizard" ? "view-mode-toggle__btn--active" : ""}`}
+                onClick={() => setViewMode("wizard")}
+                title="一步一個頁面，專注於當前步驟與下一步操作"
+              >
+                <span className="view-mode-toggle__dot" />
+                一步一頁 (引導)
+              </button>
+              <button
+                type="button"
+                className={`view-mode-toggle__btn ${viewMode === "all" ? "view-mode-toggle__btn--active" : ""}`}
+                onClick={() => setViewMode("all")}
+                title="單頁展開全部區塊"
+              >
+                全部展開
+              </button>
+            </div>
+            <span className="workbench__view-mode-hint">
+              {viewMode === "wizard" ? "目前為專注視圖：完成當前步驟後按「下一步」繼續" : "目前為長頁面視圖：所有面板皆可上下滾動檢視"}
+            </span>
           </div>
 
           <div className="workbench__intro rise-in">
@@ -761,152 +1071,223 @@ export default function Home() {
             <p className="intro-note">文字、Excel、Word、PDF 與掃描 PDF 會先在瀏覽器端解析，再依選定規則替換；您可在下載前檢視差異與 PDF 版面。</p>
           </div>
 
-          <div className="editor-card rise-in" style={{ animationDelay: "70ms" }}>
-            <div className="editor-card__header">
-              <div className="editor-card__title"><span className="section-index">A</span><span>原始資料</span></div>
-              <div className="editor-card__tools">
-                <button className="text-button" onClick={loadExample}><Sparkles size={14} /> 載入範例</button>
-                <button className="text-button text-button--quiet clear-workspace-button" onClick={() => setClearConfirmOpen(true)} title="清除原文、結果、檔案資訊、OCR 狀態與自訂關鍵字"><Trash2 size={14} /> 清除工作區</button>
-              </div>
-            </div>
-            <div
-              className={`input-zone ${isDragging ? "input-zone--dragging" : ""}`}
-              onDragOver={(event) => { event.preventDefault(); setIsDragging(true); }}
-              onDragLeave={() => setIsDragging(false)}
-              onDrop={(event) => { event.preventDefault(); setIsDragging(false); handleFile(event.dataTransfer.files?.[0]); }}
-            >
-              <textarea
-                value={input}
-                onChange={(event) => { setInput(event.target.value); setResult(""); setActiveStep(event.target.value ? "rules" : "source"); }}
-                onFocus={(event) => revealMobileInput(event.currentTarget)}
-                placeholder="將需要處理的文字貼到這裡…"
-                aria-label="原始資料輸入區"
-              />
-              {!input && (
-                <div className="input-zone__empty">
-                  <div className="empty-icon"><FileText size={21} /></div>
-                  <strong>尚未放入資料</strong>
-                  <span>支援 TXT、CSV、JSON、Excel、Word、PDF 與掃描 PDF</span>
-                  <button className="upload-button" onClick={() => fileInputRef.current?.click()} disabled={isParsing}>{isParsing ? <LoaderCircle className="spin" size={15} /> : <Upload size={15} />} {isParsing ? "本機解析中" : "選取檔案"}</button>
-                  <input ref={fileInputRef} type="file" accept=".txt,.csv,.json,.xlsx,.xls,.docx,.pdf,text/plain,text/csv,application/json,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(event) => handleFile(event.target.files?.[0])} hidden />
-                </div>
+          {viewMode === "wizard" ? (
+            <div className="wizard-step-container">
+              {activeStep === "source" && (
+                <>
+                  <div className="wizard-step-header">
+                    <div className="wizard-step-header__title">
+                      <span className="wizard-step-header__index">01 / 04</span>
+                      <span className="wizard-step-header__label">步驟一：放入原始資料</span>
+                    </div>
+                    <span className="wizard-step-header__hint">支援直接貼上文字或上傳 TXT、CSV、Excel、Word、PDF（含繁中 OCR）</span>
+                  </div>
+
+                  {renderSourceCard()}
+
+                  <div className="wizard-action-bar">
+                    <div className="wizard-action-bar__info">
+                      {isSourceReady ? (
+                        <span><CheckCircle2 size={15} /> 已載入 {countCharacters(input)} 字元 {fileName ? `（${fileName}）` : ""}</span>
+                      ) : (
+                        <span><Info size={15} /> 請先貼上文字或選取檔案以開始處理</span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      className="wizard-btn wizard-btn--primary"
+                      disabled={!isSourceReady || isParsing}
+                      onClick={() => navigateToStep("rules")}
+                    >
+                      <span>下一步：選擇規則</span>
+                      <ChevronRight size={17} />
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {activeStep === "rules" && (
+                <>
+                  <div className="wizard-step-header">
+                    <div className="wizard-step-header__title">
+                      <span className="wizard-step-header__index">02 / 04</span>
+                      <span className="wizard-step-header__label">步驟二：選擇去識別化規則與關鍵字</span>
+                    </div>
+                    <span className="wizard-step-header__hint">勾選欲遮蔽的個資項目，或新增自訂字典關鍵字</span>
+                  </div>
+
+                  <div className="wizard-source-summary">
+                    <div className="wizard-source-summary__text">
+                      <FolderOpen size={16} />
+                      <span><strong>目前資料來源：</strong>{fileName || "純文字"}（{countCharacters(input)} 字元 · {sourcePageCount} 頁 {sourceTypeLabel}）</span>
+                    </div>
+                    <button type="button" className="text-button" onClick={() => navigateToStep("source")}>
+                      <Pencil size={13} /> 修改或更換原文
+                    </button>
+                  </div>
+
+                  {renderRulesSection()}
+
+                  <div className="wizard-action-bar wizard-action-bar--between">
+                    <button
+                      type="button"
+                      className="wizard-btn wizard-btn--secondary"
+                      onClick={() => navigateToStep("source")}
+                    >
+                      <ChevronLeft size={16} /> 上一步：修改原文
+                    </button>
+                    <button
+                      type="button"
+                      className="wizard-btn wizard-btn--execute"
+                      disabled={!input.trim()}
+                      onClick={processText}
+                    >
+                      <FileCheck2 size={17} />
+                      <span>執行去識別化並進入步驟 3 檢查遮罩 ({enabledRules.length} 項規則)</span>
+                      <ChevronRight size={17} />
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {activeStep === "review" && (
+                <>
+                  <div className="wizard-step-header">
+                    <div className="wizard-step-header__title">
+                      <span className="wizard-step-header__index">03 / 04</span>
+                      <span className="wizard-step-header__label">步驟三：檢查遮罩與差異比對</span>
+                    </div>
+                    <span className="wizard-step-header__hint">雙欄滾輪同步滾動，精準比對處理前與處理後內容</span>
+                  </div>
+
+                  {sourcePdfFile && (
+                    <div className="wizard-pdf-banner">
+                      <div className="wizard-pdf-banner__copy">
+                        <strong><FileOutput size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: "6px" }} />檢測到 PDF 文件（共 {pdfPageCount} 頁{parsedDocument?.ocrPageCount ? `，含 ${parsedDocument.ocrPageCount} 頁 OCR` : ""}）</strong>
+                        <small>建議開啟視覺版面預覽，可直接在原頁面雙頁對比並自由手動框選遮蔽。</small>
+                      </div>
+                      <button
+                        type="button"
+                        className="wizard-btn wizard-btn--primary"
+                        onClick={() => {
+                          setPdfPreviewPage(1);
+                          setPdfPreviewZoom(100);
+                          setPdfPreviewOpen(true);
+                        }}
+                      >
+                        開啟 PDF 視覺版面對照 <ChevronRight size={15} />
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="wizard-review-toolbar">
+                    <div className="wizard-review-tabs" role="tablist" aria-label="檢視模式切換">
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={reviewTab === "diff"}
+                        className={`wizard-review-tab ${reviewTab === "diff" ? "wizard-review-tab--active" : ""}`}
+                        onClick={() => setReviewTab("diff")}
+                      >
+                        <FileDiff size={14} /> 雙欄差異比對（同步滾動）
+                      </button>
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={reviewTab === "text"}
+                        className={`wizard-review-tab ${reviewTab === "text" ? "wizard-review-tab--active" : ""}`}
+                        onClick={() => setReviewTab("text")}
+                      >
+                        <FileText size={14} /> 去識別化純文字
+                      </button>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                      <span style={{ fontSize: "12px", color: "var(--ink-soft)" }}>已替換 <strong>{resultStats.total}</strong> 處</span>
+                      <button type="button" className="text-button" onClick={copyResult}>
+                        {copied ? <Check size={14} /> : <Clipboard size={14} />} {copied ? "已複製" : "複製結果"}
+                      </button>
+                    </div>
+                  </div>
+
+                  {reviewTab === "diff" ? (
+                    <DiffView original={input} revised={result} onClose={() => setReviewTab("text")} />
+                  ) : (
+                    <div className="result-card" style={{ marginTop: 0 }}>
+                      <pre className="result-preview">{result}</pre>
+                    </div>
+                  )}
+
+                  <div className="wizard-action-bar wizard-action-bar--between">
+                    <button
+                      type="button"
+                      className="wizard-btn wizard-btn--secondary"
+                      onClick={() => navigateToStep("rules")}
+                    >
+                      <ChevronLeft size={16} /> 上一步：調整規則
+                    </button>
+                    <button
+                      type="button"
+                      className="wizard-btn wizard-btn--primary"
+                      onClick={() => navigateToStep("download")}
+                    >
+                      <span>下一步：前往步驟 4 下載輸出</span>
+                      <ArrowDownToLine size={17} />
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {activeStep === "download" && (
+                <>
+                  <div className="wizard-step-header">
+                    <div className="wizard-step-header__title">
+                      <span className="wizard-step-header__index">04 / 04</span>
+                      <span className="wizard-step-header__label">步驟四：下載輸出與完成摘要</span>
+                    </div>
+                    <span className="wizard-step-header__hint">100% 瀏覽器本機端產生，保護您的機敏資料不外流</span>
+                  </div>
+
+                  {renderDownloadSection()}
+
+                  <div className="wizard-action-bar wizard-action-bar--between">
+                    <button
+                      type="button"
+                      className="wizard-btn wizard-btn--secondary"
+                      onClick={() => navigateToStep("review")}
+                    >
+                      <ChevronLeft size={16} /> 返回步驟 3 檢查遮罩
+                    </button>
+                    <button
+                      type="button"
+                      className="wizard-btn wizard-btn--quiet"
+                      onClick={() => setClearConfirmOpen(true)}
+                      title="清除工作區並回到步驟 1 處理下一份資料"
+                    >
+                      <Trash2 size={15} /> 處理下一份資料（清除工作區）
+                    </button>
+                  </div>
+                </>
               )}
             </div>
-            {isParsing && parseProgress && (
-              <div className="ocr-progress" role="status" aria-live="polite">
-                <div className="ocr-progress__header">
-                  <span className="ocr-progress__copy"><LoaderCircle className="spin" size={14} /><span><strong>{progressTitle}</strong><small>{parseProgress.message}</small></span></span>
-                  <span className="ocr-progress__controls"><span className="ocr-progress__percent">{parseProgress.percent}%</span><button className="text-button ocr-progress__cancel" onClick={cancelParsing} disabled={isCancelling}>{isCancelling ? "正在取消" : "取消處理"} <X size={13} /></button></span>
-                </div>
-                <div className="ocr-progress__meta"><span>{progressPageLabel}</span><span>{parseProgress.detail}</span></div>
-                <div className="ocr-progress__track" role="progressbar" aria-label="PDF 本機 OCR 進度" aria-valuenow={parseProgress.percent} aria-valuemin={0} aria-valuemax={100}><span style={{ width: `${parseProgress.percent}%` }} /></div>
-              </div>
-            )}
-            <div className="editor-card__footer">
-              <span>{fileName ? <><FolderOpen size={14} /> {fileName} {parsedDocument?.fileType === "xlsx" ? <FileSpreadsheet size={13} /> : parsedDocument?.fileType === "docx" ? <FileType2 size={13} /> : parsedDocument?.fileType === "pdf" ? <FileOutput size={13} /> : null}</> : <><LockKeyhole size={14} /> 只在瀏覽器記憶體中處理</>}</span>
-              <span>{countCharacters(input)} 字元</span>
-            </div>
-            <div className="clear-scope-note"><Info size={13} /> 清除會移除工作區記憶體中的原文、結果、檔案資訊、OCR 狀態與自訂關鍵字；不影響已下載的結果檔。</div>
-            {parseError && <div className={parseError.startsWith("已取消") ? "parse-warning parse-cancelled" : "parse-error"}><Info size={14} /> {parseError}</div>}
-            {parsedDocument?.warnings.map((warning) => <div className={`parse-warning ${warning.includes("本機使用繁體中文 OCR") ? "parse-warning--ocr" : ""}`} key={warning}><Info size={14} /> {warning}</div>)}
-          </div>
-
-          {input.trim() && !isParsing && (
-            <section className="workflow-prompt workflow-prompt--source" aria-label="下一步：選擇規則">
-              <span className="workflow-prompt__marker" aria-hidden="true">01</span>
-              <div className="workflow-prompt__copy">
-                <span className="workflow-prompt__eyebrow">資料已就緒</span>
-                <strong>已解析 {sourcePageCount} 頁 {sourceTypeLabel}，接著確認要套用的遮蔽規則。</strong>
-                {parsedDocument?.ocrPageCount ? <small>其中 {parsedDocument.ocrPageCount} 頁已在本機完成 OCR 辨識。</small> : <small>原始內容仍只存在目前瀏覽器工作區。</small>}
-              </div>
-              <button type="button" className="workflow-prompt__action" onClick={continueToRules}>前往選擇規則 <ChevronRight size={16} /></button>
-            </section>
-          )}
-
-          <section ref={rulesSectionRef} className="rules-section rise-in" style={{ animationDelay: "140ms" }}>
-            <div className="section-heading">
-              <div><span className="section-index">B</span><h2>去識別化規則</h2></div>
-              <div className="section-heading__actions">
-                <span className="rule-count">{enabledRules.length} / {DEFAULT_RULES.length} 啟用</span>
-                <button className="text-button quick-toggle" onClick={() => setAllRules(true)} disabled={enabledRules.length === DEFAULT_RULES.length}>全選</button>
-                <button className="text-button quick-toggle text-button--quiet" onClick={() => setAllRules(false)} disabled={enabledRules.length === 0}>全不選</button>
-              </div>
-            </div>
-            <div className="rule-selector">
-              <div className="rule-selector__toolbar">
-                <label className="rule-search">
-                  <Search size={15} aria-hidden="true" />
-                  <span className="sr-only">搜尋去識別化規則</span>
-                  <input value={ruleSearch} onChange={(event) => setRuleSearch(event.target.value)} placeholder="搜尋規則，例如：姓名、電話、數字" />
-                  {ruleSearch && <button type="button" onClick={() => setRuleSearch("")} aria-label="清除規則搜尋"><X size={14} /></button>}
-                </label>
-                <span className="rule-selector__hint">可收合分組 · {visibleRuleGroups.reduce((total, group) => total + group.rules.length, 0)} 項可見</span>
-              </div>
-              <div className="rule-groups">
-                {visibleRuleGroups.map((group) => {
-                  const expanded = ruleSearch.trim().length > 0 || expandedRuleGroups.includes(group.id);
-                  const enabledCount = group.ruleIds.filter((id) => enabledRules.includes(id)).length;
-                  const allEnabled = group.ruleIds.length > 0 && enabledCount === group.ruleIds.length;
-                  const partiallyEnabled = enabledCount > 0 && !allEnabled;
-                  return (
-                    <section className={`rule-group ${expanded ? "rule-group--expanded" : ""} ${allEnabled ? "rule-group--all-enabled" : ""} ${partiallyEnabled ? "rule-group--partial" : ""}`} key={group.id}>
-                      <button type="button" className="rule-group__toggle" onClick={() => toggleRuleGroup(group.id)} aria-expanded={expanded}>
-                        <span className="rule-group__marker" aria-hidden="true">{allEnabled ? <Check size={8} strokeWidth={3} /> : partiallyEnabled ? <span className="rule-group__marker-dot" /> : null}</span>
-                        <span className="rule-group__name"><strong>{group.label}</strong><small>{group.detail}</small></span>
-                        <span className="rule-group__count">{enabledCount} / {group.ruleIds.length}</span>
-                        <ChevronDown className="rule-group__chevron" size={15} aria-hidden="true" />
-                      </button>
-                      <div className={`rule-option-list ${expanded ? "rule-option-list--open" : ""}`} aria-hidden={!expanded}>
-                        <div className="rule-option-list__inner">
-                         {group.rules.map((rule) => {
-                          const enabled = enabledRules.includes(rule.id);
-                          return (
-                            <button type="button" className={`rule-option ${enabled ? "rule-option--enabled" : ""}`} key={rule.id} onClick={() => toggleRule(rule.id)} aria-pressed={enabled}>
-                              <span className="rule-option__icon" aria-hidden="true">{RULE_ICONS[rule.id]}</span>
-                              <span className="rule-option__text"><strong>{rule.label}</strong><small>{rule.detail}</small></span>
-                              <span className="rule-option__check" aria-hidden="true">{enabled ? <Check size={12} /> : <span />}</span>
-                            </button>
-                          );
-                         })}
-                        </div>
-                      </div>
-                    </section>
-                  );
-                })}
-              </div>
-              {visibleRuleGroups.length === 0 && <p className="rule-selector__empty">找不到相符規則，請改用其他關鍵字。</p>}
-            </div>
-            <div className="custom-rule">
-              <div className="custom-rule__topline"><div className="custom-rule__label"><Fingerprint size={17} /><span><strong>自訂關鍵字</strong><small>例如：專案名稱、內部代號、客戶姓名</small></span></div><div className="custom-rule__dictionary-actions"><button className="text-button" onClick={exportDictionary} disabled={!customTerms.length}><ArrowDownToLine size={13} /> 匯出字典</button><button className="text-button text-button--quiet" onClick={() => dictionaryInputRef.current?.click()}><Upload size={13} /> 匯入字典</button><input ref={dictionaryInputRef} type="file" accept="application/json,.json" onChange={(event) => importDictionary(event.target.files?.[0])} hidden /></div></div>
-              <div className="custom-rule__input"><input value={customInput} onChange={(event) => setCustomInput(event.target.value)} onFocus={(event) => revealMobileInput(event.currentTarget)} onKeyDown={(event) => { if (event.key === "Enter") addCustomTerm(); }} placeholder="輸入後按 Enter，可用逗號分隔" /><button onClick={addCustomTerm} aria-label="新增自訂關鍵字">新增</button></div>
-              {customTerms.length > 0 && <div className="term-list">{customTerms.map((term) => <span key={term}>{term}<button onClick={() => { setCustomTerms((current) => current.filter((item) => item !== term)); setResult(""); setActiveStep(input.trim() ? "rules" : "source"); }} aria-label={`移除 ${term}`}><X size={12} /></button></span>)}</div>}
-            </div>
-            <div className="workflow-execution-summary" aria-live="polite"><ShieldCheck size={15} /><span><strong>執行前摘要</strong> 已啟用 {enabledRules.length} 項規則{customTerms.length > 0 ? `，另有 ${customTerms.length} 個自訂關鍵字` : "，尚未加入自訂關鍵字"}。</span></div>
-            <div className="action-row"><span className="action-row__hint"><ScanLine size={16} /> {input ? "規則會在本機即時比對，執行前可隨時調整。" : "放入資料後即可開始設定規則。"}</span><span className="action-row__seal"><LockKeyhole size={13} /> LOCAL ONLY · 執行前確認</span><button className="primary-button" onClick={processText} disabled={!input.trim()}><FileCheck2 size={17} /> 已啟用 {enabledRules.length} 項規則 · 執行去識別化 <ChevronRight size={16} /></button></div>
-          </section>
-
-          {result && (
-            <div ref={resultSectionRef} className="result-card rise-in">
-              <div className="result-card__header"><div className="editor-card__title"><span className="section-index section-index--amber">C</span><span>覆核結果</span><span className="done-label"><CheckCircle2 size={14} /> 已完成</span></div><div className="result-card__actions"><span className="result-seal"><LockKeyhole size={12} /> LOCAL ONLY · 匯出前可預覽</span><button className="text-button" onClick={copyResult}>{copied ? <Check size={14} /> : <Clipboard size={14} />} {copied ? "已複製" : "複製結果"}</button><button className="text-button" onClick={() => setShowDiff((open) => !open)}><FileDiff size={14} /> {showDiff ? "隱藏差異" : "查看差異"}</button></div></div>
-              <div className="review-checklist" aria-label="覆核清單">
-                <span><CheckCircle2 size={15} /><strong>已遮蔽 {resultStats.total} 處</strong><small>自動規則已套用</small></span>
-                <span><Pencil size={15} /><strong>手動遮蔽 {manualRedactionCount} 處</strong><small>{sourcePdfFile ? "可在 PDF 預覽中新增或調整" : "此格式可直接檢查文字差異"}</small></span>
-                <span><FileDiff size={15} /><strong>建議：{sourcePdfFile ? "開啟 PDF 預覽確認" : "查看差異確認"}</strong><small>確認無遺漏後再下載</small></span>
-              </div>
-              <pre className="result-preview">{result}</pre>
-              <div className="result-summary"><span><strong>{resultStats.total}</strong> 處內容已替換</span><span>輸入 {countCharacters(input)} 字元</span><span>輸出 {countCharacters(result)} 字元</span></div>
-              <section className="workflow-prompt workflow-prompt--review" aria-label={sourcePdfFile ? "下一步：開啟 PDF 預覽" : "下一步：下載結果"}>
-                <span className="workflow-prompt__marker" aria-hidden="true">03</span>
-                <div className="workflow-prompt__copy">
-                  <span className="workflow-prompt__eyebrow">覆核摘要</span>
-                  <strong>已替換 {resultStats.total} 處內容{manualRedactionCount > 0 ? `，含 ${manualRedactionCount} 處手動遮蔽` : ""}。</strong>
-                  <small>{sourcePdfFile ? "建議先開啟原始版面比對，確認遮罩位置與範圍。" : "確認差異後，即可由本機產生最終結果檔。"}</small>
-                </div>
-                <button type="button" className="workflow-prompt__action workflow-prompt__action--primary" onClick={downloadResult} aria-haspopup={sourcePdfFile ? "dialog" : undefined}>{sourcePdfFile ? <>開啟 PDF 預覽 <ChevronRight size={16} /></> : <>下載結果 <ArrowDownToLine size={16} /></>}</button>
-              </section>
+          ) : (
+            <div className="all-sections-container" style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
+              {renderSourceCard()}
+              {input.trim() && !isParsing && (
+                <section className="workflow-prompt workflow-prompt--source" aria-label="下一步：選擇規則">
+                  <span className="workflow-prompt__marker" aria-hidden="true">01</span>
+                  <div className="workflow-prompt__copy">
+                    <span className="workflow-prompt__eyebrow">資料已就緒</span>
+                    <strong>已解析 {sourcePageCount} 頁 {sourceTypeLabel}，接著確認要套用的遮蔽規則。</strong>
+                    {parsedDocument?.ocrPageCount ? <small>其中 {parsedDocument.ocrPageCount} 頁已在本機完成 OCR 辨識。</small> : <small>原始內容仍只存在目前瀏覽器工作區。</small>}
+                  </div>
+                  <button type="button" className="workflow-prompt__action" onClick={continueToRules}>前往選擇規則 <ChevronRight size={16} /></button>
+                </section>
+              )}
+              {renderRulesSection()}
+              {result && renderReviewSection()}
+              {result && showDiff && <DiffView original={input} revised={result} onClose={() => setShowDiff(false)} />}
             </div>
           )}
-          {result && showDiff && <DiffView original={input} revised={result} onClose={() => setShowDiff(false)} />}
         </section>
 
         <aside className="status-column">
