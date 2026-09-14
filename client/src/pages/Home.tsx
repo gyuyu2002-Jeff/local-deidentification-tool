@@ -164,7 +164,15 @@ function LocalMark({ compact = false }: { compact?: boolean }) {
   );
 }
 
-function StepRail({ activeStep }: { activeStep: Step }) {
+function StepRail({
+  activeStep,
+  onSelectStep,
+  canNavigateToStep,
+}: {
+  activeStep: Step;
+  onSelectStep: (step: Step) => void;
+  canNavigateToStep: (step: Step) => boolean;
+}) {
   const steps: { id: Step; number: string; label: string; hint: string }[] = [
     { id: "source", number: "01", label: "放入資料", hint: "貼上或讀取檔案" },
     { id: "rules", number: "02", label: "選擇規則", hint: "確認要遮蔽的內容" },
@@ -184,15 +192,24 @@ function StepRail({ activeStep }: { activeStep: Step }) {
         {steps.map((step, index) => {
           const isActive = activeStep === step.id;
           const isDone = activeIndex > index;
+          const isAccessible = canNavigateToStep(step.id);
           return (
-            <div className={`rail-step ${isActive ? "rail-step--active" : ""} ${isDone ? "rail-step--done" : ""}`} key={step.id} aria-current={isActive ? "step" : undefined}>
+            <button
+              type="button"
+              className={`rail-step ${isActive ? "rail-step--active" : ""} ${isDone ? "rail-step--done" : ""} ${isAccessible ? "rail-step--clickable" : "rail-step--disabled"}`}
+              key={step.id}
+              onClick={() => onSelectStep(step.id)}
+              disabled={!isAccessible}
+              aria-current={isActive ? "step" : undefined}
+              title={isAccessible ? `跳轉至步驟 ${step.number}：${step.label}` : "請先完成前置步驟以解鎖"}
+            >
               <span className="rail-step__number">{isDone ? <Check size={14} /> : step.number}</span>
               <span className="rail-step__copy">
                 <strong>{step.label}</strong>
                 <small>{step.hint}</small>
               </span>
               {isActive && <ChevronRight className="rail-step__arrow" size={17} />}
-            </div>
+            </button>
           );
         })}
       </nav>
@@ -583,6 +600,49 @@ export default function Home() {
     window.requestAnimationFrame(() => rulesSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
   };
 
+  const isSourceReady = input.trim().length > 0 || parsedDocument !== null;
+  const isReviewReady = result.trim().length > 0;
+
+  const canNavigateToStep = (step: Step) => {
+    switch (step) {
+      case "source":
+        return true;
+      case "rules":
+        return isSourceReady;
+      case "review":
+        return isSourceReady && isReviewReady;
+      case "download":
+        return isSourceReady && isReviewReady;
+    }
+  };
+
+  const navigateToStep = (step: Step) => {
+    if (!canNavigateToStep(step)) {
+      if (step === "rules") {
+        toast.info("請先在第一步放入文字或上傳文件。");
+      } else {
+        toast.info("請先執行去識別化，產生結果後再進入此步驟。");
+      }
+      return;
+    }
+    setActiveStep(step);
+    if (step === "source") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } else if (step === "rules") {
+      rulesSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    } else if (step === "review") {
+      if (sourcePdfFile) {
+        setPdfPreviewPage(1);
+        setPdfPreviewZoom(100);
+        setPdfPreviewOpen(true);
+      } else {
+        resultSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    } else if (step === "download") {
+      resultSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -647,9 +707,52 @@ export default function Home() {
       </header>
 
       <main className="workspace">
-        <StepRail activeStep={activeStep} />
+        <StepRail
+          activeStep={activeStep}
+          onSelectStep={navigateToStep}
+          canNavigateToStep={canNavigateToStep}
+        />
 
         <section className="workbench">
+          {/* 行動版精簡工作流程指示列 */}
+          <div className="mobile-workflow-bar" role="navigation" aria-label="行動版流程指示">
+            <span className="mobile-workflow-bar__step">
+              步驟 0{["source", "rules", "review", "download"].indexOf(activeStep) + 1} / 04
+            </span>
+            <span className="mobile-workflow-bar__label">
+              {activeStep === "source" ? "放入資料" : activeStep === "rules" ? "選擇規則" : activeStep === "review" ? "檢查遮罩" : "下載輸出"}
+            </span>
+            <div className="mobile-workflow-bar__actions">
+              {activeStep !== "source" && (
+                <button
+                  type="button"
+                  className="mobile-workflow-bar__btn"
+                  onClick={() => {
+                    const prevStep: Step = activeStep === "download" ? "review" : activeStep === "review" ? "rules" : "source";
+                    navigateToStep(prevStep);
+                  }}
+                >
+                  <ChevronLeft size={13} /> 上一步
+                </button>
+              )}
+              {activeStep === "source" && isSourceReady && (
+                <button type="button" className="mobile-workflow-bar__btn mobile-workflow-bar__btn--primary" onClick={() => navigateToStep("rules")}>
+                  下一步：選規則 <ChevronRight size={13} />
+                </button>
+              )}
+              {activeStep === "rules" && isReviewReady && (
+                <button type="button" className="mobile-workflow-bar__btn mobile-workflow-bar__btn--primary" onClick={() => navigateToStep("review")}>
+                  下一步：看遮罩 <ChevronRight size={13} />
+                </button>
+              )}
+              {activeStep === "review" && (
+                <button type="button" className="mobile-workflow-bar__btn mobile-workflow-bar__btn--primary" onClick={() => navigateToStep("download")}>
+                  下一步：下載 <ArrowDownToLine size={13} />
+                </button>
+              )}
+            </div>
+          </div>
+
           <div className="workbench__intro rise-in">
             <div>
               <span className="eyebrow">01 / DATA BOUNDARY · LOCAL ONLY</span>

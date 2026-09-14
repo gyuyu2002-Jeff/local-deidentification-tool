@@ -44,6 +44,19 @@ describe("PDF 覆核遮罩資料模型", () => {
     expect(redactions[1]).toMatchObject({ x: 8, y: 90, width: 101, height: 17, origin: "automatic" });
   });
 
+  it("會在緊湊表格文字中限制遮罩不跨越相鄰欄位，且不強制膨脹尺寸", () => {
+    const redactions = createAutomaticRedactions([
+      { str: "姓名：", transform: [1, 0, 0, 10, 10, 100], width: 24, height: 10 },
+      { str: "王小明", transform: [1, 0, 0, 10, 36, 100], width: 30, height: 10 },
+      { str: "備註", transform: [1, 0, 0, 10, 90, 100], width: 20, height: 10 },
+    ], 1, 200, ["name"], []);
+
+    expect(redactions).toHaveLength(1);
+    expect(redactions[0].x).toBeGreaterThanOrEqual(8);
+    expect(redactions[0].width).toBeLessThanOrEqual(65);
+    expect(redactions[0].height).toBeLessThanOrEqual(16);
+  });
+
   it("會用人工調整覆寫同一個自動遮罩，並保留新畫出的遮罩", () => {
     const adjusted = { ...automatic, x: 16, y: 62, width: 86, height: 20 };
     const manual = { id: "manual-1", pageNumber: 1, x: 110, y: 80, width: 44, height: 18, label: "", origin: "manual" as const, color: "red" as const };

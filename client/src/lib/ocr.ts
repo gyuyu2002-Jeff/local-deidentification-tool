@@ -3,8 +3,64 @@
 import workerPath from "tesseract.js/dist/worker.min.js?url";
 import type { PDFPageProxy } from "pdfjs-dist";
 
-const CHINESE_LANGUAGE_DATA_URL =
-  import.meta.env.VITE_OCR_LANGUAGE_DATA_URL ?? "/manus-storage/chi_tra.traineddata_2eacdbbf.gz";
+const OCR_CACHE_NAME = "deid-ocr-model-cache-v1";
+
+async function loadOcrLanguageData(signal?: AbortSignal): Promise<Uint8Array> {
+  throwIfCancelled(signal);
+
+  // 1. 嘗試從瀏覽器 CacheStorage 取得已快取的本機模型
+  if (typeof caches !== "undefined") {
+    try {
+      const cache = await caches.open(OCR_CACHE_NAME);
+      const cached = await cache.match("chi_tra.traineddata.gz");
+      if (cached && cached.ok) {
+        return new Uint8Array(await cached.arrayBuffer());
+      }
+    } catch {
+      // 忽略快取讀取例外，繼續嘗試網路/本機路徑
+    }
+  }
+
+  // 2. 候選載入路徑（優先順序：本機打包資源 -> 自訂環境變數 -> 既有路徑）
+  const baseUrl = import.meta.env.BASE_URL || "/";
+  const normalizedBase = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
+  const candidateUrls = [
+    `${normalizedBase}models/chi_tra.traineddata.gz`,
+    "/models/chi_tra.traineddata.gz",
+    import.meta.env.VITE_OCR_LANGUAGE_DATA_URL,
+    "/manus-storage/chi_tra.traineddata_2eacdbbf.gz",
+  ].filter(Boolean) as string[];
+
+  for (const url of candidateUrls) {
+    throwIfCancelled(signal);
+    try {
+      const res = await fetch(url, { cache: "force-cache", signal });
+      if (res.ok) {
+        const buffer = await res.arrayBuffer();
+        // 儲存至 CacheStorage 供離線使用
+        if (typeof caches !== "undefined") {
+          try {
+            const cache = await caches.open(OCR_CACHE_NAME);
+            await cache.put(
+              "chi_tra.traineddata.gz",
+              new Response(buffer.slice(0), {
+                headers: { "Content-Type": "application/gzip" },
+              }),
+            );
+          } catch {
+            // 忽略快取寫入失敗
+          }
+        }
+        return new Uint8Array(buffer);
+      }
+    } catch (err) {
+      if (signal?.aborted) throw new DOMException("OCR cancelled", "AbortError");
+      // 繼續嘗試下一個候選路徑
+    }
+  }
+
+  throw new Error("本機繁體中文 OCR 語言模型載入失敗，請確認已載入網站離線資源。");
+}
 
 export type PdfPageLike = Pick<PDFPageProxy, "getViewport" | "render">;
 
@@ -26,17 +82,11 @@ function throwIfCancelled(signal?: AbortSignal) {
 }
 
 export async function createPdfOcrWorker(onProgress?: (log: PdfOcrLog) => void, signal?: AbortSignal) {
-  const [{ createWorker, OEM }, languageResponse] = await Promise.all([
+  const [{ createWorker, OEM }, languageData] = await Promise.all([
     import("tesseract.js"),
-    fetch(CHINESE_LANGUAGE_DATA_URL, { cache: "force-cache", signal }),
+    loadOcrLanguageData(signal),
   ]);
 
-  throwIfCancelled(signal);
-  if (!languageResponse.ok) {
-    throw new Error("本機 OCR 語言模型載入失敗，請確認網路可暫時取得網站資源後再試一次。");
-  }
-
-  const languageData = new Uint8Array(await languageResponse.arrayBuffer());
   throwIfCancelled(signal);
   const worker = await createWorker(
     [{ code: "chi_tra", data: languageData }],

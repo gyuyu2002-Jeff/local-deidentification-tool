@@ -147,6 +147,9 @@ async function parsePdf(file: File, options: DocumentParseOptions = {}): Promise
     report({ phase: "reading", currentPage: 0, percent: 0, message: "PDF 已載入，正在檢查文字層", detail: `共 ${totalPages} 頁；有文字的頁面會直接解析，掃描頁才會啟用 OCR。` });
     for (let pageNumber = 1; pageNumber <= totalPages; pageNumber += 1) {
       ensureNotCancelled(options.signal);
+      // 讓出微小時間切片，確保瀏覽器主執行緒能平滑渲染進度條並即時接收取消事件
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      ensureNotCancelled(options.signal);
       report({ phase: "reading", currentPage: pageNumber, percent: Math.round(((pageNumber - 1) / totalPages) * 100), message: "正在讀取 PDF 文字層", detail: `正在檢查第 ${pageNumber} / ${totalPages} 頁是否包含可選取文字。` });
       const page = await pdf.getPage(pageNumber);
       const content = await page.getTextContent();

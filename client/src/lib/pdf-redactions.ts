@@ -198,13 +198,35 @@ function createRedactionFromSpans(
   const right = Math.max(...spans.map((span) => span.x + span.width));
   const bottom = Math.min(...spans.map((span) => span.y));
   const height = Math.max(...spans.map((span) => span.height));
+
+  // 檢查同一行中相鄰文字邊界，避免遮罩水平延伸壓過相鄰儲存格或表格格線
+  const leftNeighbors = row.spans.filter((s) => s.x + s.width <= left);
+  const rightNeighbors = row.spans.filter((s) => s.x >= right);
+  const prevRight = leftNeighbors.length ? Math.max(...leftNeighbors.map((s) => s.x + s.width)) : null;
+  const nextLeft = rightNeighbors.length ? Math.min(...rightNeighbors.map((s) => s.x)) : null;
+
+  // 水平邊界安全縮放：若左側有緊鄰文字，限制擴展不得覆蓋鄰近文字或隔線
+  const maxLeftPad = prevRight !== null ? Math.max(0, Math.min(2, (left - prevRight) * 0.5)) : 2;
+  // 若右側有緊鄰文字，限制右側外擴量
+  const maxRightPad = nextLeft !== null ? Math.max(0, Math.min(3, (nextLeft - right) * 0.5)) : 3;
+
+  const padLeft = maxLeftPad;
+  const targetWidth = (right - left) + padLeft + maxRightPad;
+  // 對於緊湊短文字（如表格中的單一中文字），依據內容尺寸給予精準寬度，不再強制膨脹至 28px 破壞表格格線
+  const minWidth = Math.min(28, (right - left) + 4);
+  const finalWidth = Math.max(minWidth, targetWidth);
+
+  // 垂直邊界：高度自適應限制，避免小字體被過度拉高至 16px 壓到上下格線
+  const minHeight = Math.min(16, height + 4);
+  const finalHeight = Math.max(minHeight, height + 5);
+
   return {
     id,
     pageNumber,
-    x: left - 2,
+    x: left - padLeft,
     y: pageHeight - bottom - height - 2,
-    width: Math.max(28, right - left + 5),
-    height: Math.max(16, height + 5),
+    width: finalWidth,
+    height: finalHeight,
     label: "",
     origin: "automatic" as const,
     color,
