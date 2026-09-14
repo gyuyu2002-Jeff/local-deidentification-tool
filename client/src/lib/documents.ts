@@ -24,6 +24,11 @@ export type DocumentParseProgress = {
   detail: string;
 };
 
+export type SpreadsheetSheet = {
+  name: string;
+  rows: string[][];
+};
+
 export type ParsedDocument = {
   text: string;
   fileName: string;
@@ -31,6 +36,8 @@ export type ParsedDocument = {
   pageCount?: number;
   ocrPageCount?: number;
   sheetCount?: number;
+  sheets?: SpreadsheetSheet[];
+  html?: string;
   warnings: string[];
 };
 
@@ -79,10 +86,13 @@ async function parseSpreadsheet(file: File): Promise<ParsedDocument> {
   const XLSX = await import("xlsx");
   const buffer = await file.arrayBuffer();
   const workbook = XLSX.read(buffer, { type: "array", cellDates: true });
+  const sheets: SpreadsheetSheet[] = [];
   const sections = workbook.SheetNames.map((sheetName) => {
     const sheet = workbook.Sheets[sheetName];
-    const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, raw: false, defval: "" });
-    const body = joinRows(rows);
+    const rawRows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, raw: false, defval: "" });
+    const stringRows = rawRows.map((row) => row.map((cell) => String(cell ?? "").trim()));
+    sheets.push({ name: sheetName, rows: stringRows });
+    const body = joinRows(rawRows);
     return `【工作表：${sheetName}】${body ? `\n${body}` : ""}`;
   });
 
@@ -91,6 +101,7 @@ async function parseSpreadsheet(file: File): Promise<ParsedDocument> {
     fileName: file.name,
     fileType: "xlsx",
     sheetCount: workbook.SheetNames.length,
+    sheets,
     warnings: ["Excel 將以純文字方式解析儲存格內容；公式會以目前儲存值呈現。"],
   };
 }
@@ -99,7 +110,10 @@ async function parseWord(file: File): Promise<ParsedDocument> {
   const mammothModule = await import("mammoth");
   const mammoth = mammothModule.default ?? mammothModule;
   const buffer = await file.arrayBuffer();
-  const extracted = await mammoth.extractRawText({ arrayBuffer: buffer });
+  const [extracted, htmlResult] = await Promise.all([
+    mammoth.extractRawText({ arrayBuffer: buffer }),
+    mammoth.convertToHtml({ arrayBuffer: buffer }),
+  ]);
   const warnings = extracted.messages.length > 0
     ? ["Word 中有部分版面或物件未轉換為純文字，請在差異檢視中確認結果。"]
     : [];
@@ -108,6 +122,7 @@ async function parseWord(file: File): Promise<ParsedDocument> {
     text: extracted.value.trim(),
     fileName: file.name,
     fileType: "docx",
+    html: htmlResult.value,
     warnings,
   };
 }

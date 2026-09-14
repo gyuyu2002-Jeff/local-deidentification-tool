@@ -49,6 +49,8 @@ import AdSlot from "@/components/AdSlot";
 import ConsentBanner from "@/components/ConsentBanner";
 import DiffView from "@/components/DiffView";
 import PdfVisualCompare from "@/components/PdfVisualCompare";
+import SpreadsheetVisualCompare from "@/components/SpreadsheetVisualCompare";
+import WordVisualCompare from "@/components/WordVisualCompare";
 import { useReadingMode, type ReadingMode } from "@/contexts/ReadingModeContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import {
@@ -275,7 +277,7 @@ export default function Home() {
   const [result, setResult] = useState("");
   const [activeStep, setActiveStep] = useState<Step>("source");
   const [viewMode, setViewMode] = useState<"wizard" | "all">("wizard");
-  const [reviewTab, setReviewTab] = useState<"diff" | "text">("diff");
+  const [reviewTab, setReviewTab] = useState<"visual" | "diff" | "text">("visual");
   const [enabledRules, setEnabledRules] = useState<RuleId[]>(ALL_RULE_IDS);
   const [ruleSearch, setRuleSearch] = useState("");
   const [expandedRuleGroups, setExpandedRuleGroups] = useState<RuleGroupId[]>([]);
@@ -411,7 +413,7 @@ export default function Home() {
     const next = deidentifyText(input, enabledRules, customTerms);
     setResult(next.text);
     setShowDiff(true);
-    setReviewTab("diff");
+    setReviewTab("visual");
     setActiveStep("review");
     if (viewMode === "all") {
       window.requestAnimationFrame(() => resultSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
@@ -845,6 +847,167 @@ export default function Home() {
       )}
     </section>
   );
+
+  const renderVisualReview = () => {
+    if (sourcePdfFile) {
+      return (
+        <div className="wizard-inline-pdf-box rise-in">
+          <div className="wizard-inline-pdf-toolbar">
+            <div className="pdf-preview-dialog__page-navigation">
+              <button
+                type="button"
+                onClick={() => setPdfPreviewPage((page) => Math.max(1, page - 1))}
+                disabled={pdfPreviewPage <= 1 || isPdfExporting}
+              >
+                <ChevronLeft size={15} /> 上一頁
+              </button>
+              <label>
+                頁碼{" "}
+                <input
+                  type="number"
+                  min={1}
+                  max={pdfPageCount}
+                  value={pdfPreviewPage}
+                  onChange={(event) =>
+                    setPdfPreviewPage(Math.min(pdfPageCount, Math.max(1, Number(event.target.value) || 1)))
+                  }
+                  disabled={isPdfExporting}
+                  aria-label="目前 PDF 頁碼"
+                />{" "}
+                <span>/ {pdfPageCount}</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => setPdfPreviewPage((page) => Math.min(pdfPageCount, page + 1))}
+                disabled={pdfPreviewPage >= pdfPageCount || isPdfExporting}
+              >
+                下一頁 <ChevronRight size={15} />
+              </button>
+            </div>
+
+            <div className="pdf-preview-dialog__page-actions">
+              <div className="pdf-preview-dialog__view-controls" role="group" aria-label="PDF 檢視縮放">
+                <button
+                  type="button"
+                  onClick={() => setPdfPreviewZoom((zoom) => Math.max(80, zoom - 10))}
+                  disabled={isPdfExporting || pdfPreviewZoom <= 80}
+                  title="縮小"
+                >
+                  <ZoomOut size={14} />
+                </button>
+                <output aria-live="polite">{pdfPreviewZoom}%</output>
+                <button
+                  type="button"
+                  onClick={() => setPdfPreviewZoom((zoom) => Math.min(150, zoom + 10))}
+                  disabled={isPdfExporting || pdfPreviewZoom >= 150}
+                  title="放大"
+                >
+                  <ZoomIn size={14} />
+                </button>
+              </div>
+
+              <button
+                type="button"
+                className={`pdf-preview-dialog__mode ${manualReviewMode ? "pdf-preview-dialog__mode--active" : ""}`}
+                onClick={() => setManualReviewMode((enabled) => !enabled)}
+                disabled={isPdfExporting}
+                aria-pressed={manualReviewMode}
+              >
+                <Pencil size={14} /> {manualReviewMode ? "標記中" : "手動框選遮蔽"}
+              </button>
+
+              {manualReviewMode && (
+                <div className="pdf-preview-dialog__color-picker" role="group" aria-label="標記顏色">
+                  <span>顏色</span>
+                  {(Object.keys(PDF_REDACTION_COLORS) as PdfRedactionColor[]).map((color) => (
+                    <button
+                      type="button"
+                      key={color}
+                      className={`pdf-preview-dialog__color-swatch pdf-preview-dialog__color-swatch--${color} ${selectedPdfRedactionColor === color ? "pdf-preview-dialog__color-swatch--selected" : ""}`}
+                      onClick={() => setSelectedPdfRedactionColor(color)}
+                      disabled={isPdfExporting}
+                      aria-pressed={selectedPdfRedactionColor === color}
+                    />
+                  ))}
+                </div>
+              )}
+
+              <button
+                type="button"
+                className="pdf-preview-dialog__history-action"
+                onClick={() => setPdfReviewHistory((history) => undoPdfReviewHistory(history))}
+                disabled={isPdfExporting || !canUndoPdfReview}
+                title="復原"
+              >
+                <Undo2 size={15} />
+                <span>復原</span>
+              </button>
+
+              <button
+                type="button"
+                className="pdf-preview-dialog__history-action"
+                onClick={() => setPdfReviewHistory((history) => redoPdfReviewHistory(history))}
+                disabled={isPdfExporting || !canRedoPdfReview}
+                title="重做"
+              >
+                <Redo2 size={15} />
+                <span>重做</span>
+              </button>
+
+              <button
+                type="button"
+                className="pdf-preview-dialog__fullscreen"
+                onClick={() => setPdfPreviewOpen(true)}
+                title="全螢幕預覽"
+              >
+                <Maximize2 size={14} />
+                <span>全螢幕</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="wizard-inline-pdf-viewport">
+            <PdfVisualCompare
+              file={sourcePdfFile}
+              pageNumber={pdfPreviewPage}
+              enabledRules={enabledRules}
+              customTerms={customTerms}
+              zoomPercent={pdfPreviewZoom}
+              textScale={pdfPreviewTextScale}
+              manualReviewMode={manualReviewMode}
+              selectedRedactionColor={selectedPdfRedactionColor}
+              reviewState={pdfReviewState}
+              onReviewStateChange={(state) =>
+                setPdfReviewHistory((history) => recordPdfReviewState(history, state))
+              }
+            />
+          </div>
+        </div>
+      );
+    }
+
+    if (parsedDocument?.sheets && parsedDocument.sheets.length > 0) {
+      return (
+        <SpreadsheetVisualCompare
+          sheets={parsedDocument.sheets}
+          enabledRules={enabledRules}
+          customTerms={customTerms}
+        />
+      );
+    }
+
+    if (parsedDocument?.fileType === "docx" && parsedDocument.html) {
+      return (
+        <WordVisualCompare
+          html={parsedDocument.html}
+          enabledRules={enabledRules}
+          customTerms={customTerms}
+        />
+      );
+    }
+
+    return <DiffView original={input} revised={result} onClose={() => setReviewTab("text")} />;
+  };
 
   const renderReviewSection = () => (
     <div ref={resultSectionRef} className="result-card rise-in">
@@ -1280,11 +1443,20 @@ export default function Home() {
                       <button
                         type="button"
                         role="tab"
+                        aria-selected={reviewTab === "visual"}
+                        className={`wizard-review-tab ${reviewTab === "visual" ? "wizard-review-tab--active" : ""}`}
+                        onClick={() => setReviewTab("visual")}
+                      >
+                        <Sparkles size={14} /> 智慧原樣對照（{sourcePdfFile ? "PDF 原版面" : parsedDocument?.fileType === "xlsx" ? "試算表格線" : parsedDocument?.fileType === "docx" ? "Word 排版" : "最佳視覺"}）
+                      </button>
+                      <button
+                        type="button"
+                        role="tab"
                         aria-selected={reviewTab === "diff"}
                         className={`wizard-review-tab ${reviewTab === "diff" ? "wizard-review-tab--active" : ""}`}
                         onClick={() => setReviewTab("diff")}
                       >
-                        <FileDiff size={14} /> 雙欄差異比對（同步滾動）
+                        <FileDiff size={14} /> 雙欄文字差異（同步滾動）
                       </button>
                       <button
                         type="button"
@@ -1304,7 +1476,9 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {reviewTab === "diff" ? (
+                  {reviewTab === "visual" ? (
+                    renderVisualReview()
+                  ) : reviewTab === "diff" ? (
                     <DiffView original={input} revised={result} onClose={() => setReviewTab("text")} />
                   ) : (
                     <div className="result-card" style={{ marginTop: 0 }}>
