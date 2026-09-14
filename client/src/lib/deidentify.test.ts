@@ -112,7 +112,47 @@ describe("deidentifyText", () => {
     expect(output.counts.phone).toBe(1);
   });
 
-  it("keeps the fourteen default rules in location-first and number-last order", () => {
+  it("identifies amount and currency values with amount rule", () => {
+    const output = deidentifyText(
+      "合約金額：125,000.50 元；未稅 50,000 元；總計 NT$ 3,000,000；單價 $500",
+      ["amount"],
+      [],
+    );
+
+    expect(output.text).toBe("合約金額：[AMOUNT]；未稅 [AMOUNT]；總計 [AMOUNT]；單價 [AMOUNT]");
+    expect(output.counts.amount).toBe(4);
+    expect(output.total).toBe(4);
+  });
+
+  it("preserves technical specifications and dimensions while masking general numbers", () => {
+    const sample = `
+投影畫面尺寸:50~ 500 吋
+對比度 : 5,000,000 : 1 含以上
+鏡頭放大比: 1~1.6
+投射比:1.35~2.2
+HDMI*二組(HDCP2.3)
+耗電量 350W
+解析度 1920x1080
+訂單編號 987654321
+`.trim();
+
+    const output = deidentifyText(sample, ["number"], []);
+
+    // 規格內容全部保留，不被視為一般數字遮蓋
+    expect(output.text).toContain("投影畫面尺寸:50~ 500 吋");
+    expect(output.text).toContain("對比度 : 5,000,000 : 1 含以上");
+    expect(output.text).toContain("鏡頭放大比: 1~1.6");
+    expect(output.text).toContain("投射比:1.35~2.2");
+    expect(output.text).toContain("HDMI*二組(HDCP2.3)");
+    expect(output.text).toContain("耗電量 350W");
+    expect(output.text).toContain("解析度 1920x1080");
+
+    // 一般無規格特徵的長數字被遮蓋
+    expect(output.text).toContain("訂單編號 [NUMBER]");
+    expect(output.counts.number).toBe(1);
+  });
+
+  it("keeps the fifteen default rules in location-first and number-last order", () => {
     expect(DEFAULT_RULES.map((rule) => rule.id)).toEqual([
       "address",
       "placeName",
@@ -127,7 +167,9 @@ describe("deidentifyText", () => {
       "phone",
       "date",
       "ip",
+      "amount",
       "number",
     ]);
   });
 });
+

@@ -127,7 +127,7 @@ const RULE_GROUPS: { id: RuleGroupId; label: string; detail: string; ruleIds: Ru
   { id: "location", label: "位置資訊", detail: "地址、地名與區域", ruleIds: ["address", "placeName", "region"] },
   { id: "identity", label: "身分識別", detail: "公司、客戶、聯絡人與統編", ruleIds: ["companyName", "customerName", "contactName", "name", "taiwanId", "uniformNumber"] },
   { id: "contact", label: "聯絡資訊", detail: "電子郵件與電話", ruleIds: ["email", "phone"] },
-  { id: "signals", label: "時間與技術訊號", detail: "日期、IP 與數字", ruleIds: ["date", "ip", "number"] },
+  { id: "signals", label: "時間、金額與技術訊號", detail: "日期、IP、金額與數字", ruleIds: ["date", "ip", "amount", "number"] },
 ];
 
 const RULE_ICONS: Record<RuleId, string> = {
@@ -144,6 +144,7 @@ const RULE_ICONS: Record<RuleId, string> = {
   phone: "☎",
   date: "D",
   ip: "IP",
+  amount: "$",
   number: "#",
 };
 

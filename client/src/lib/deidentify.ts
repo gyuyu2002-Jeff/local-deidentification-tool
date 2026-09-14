@@ -2,7 +2,7 @@
 
 // 設計提醒：規則順序也是介面語言；先處理空間位置，再處理識別與技術欄位，讓檔案校閱從高風險內容開始。
 
-export type RuleId = "email" | "phone" | "taiwanId" | "uniformNumber" | "number" | "date" | "ip" | "address" | "placeName" | "region" | "name" | "companyName" | "customerName" | "contactName";
+export type RuleId = "email" | "phone" | "taiwanId" | "uniformNumber" | "amount" | "number" | "date" | "ip" | "address" | "placeName" | "region" | "name" | "companyName" | "customerName" | "contactName";
 
 export type DeidentifyRule = {
   id: RuleId;
@@ -103,12 +103,67 @@ export const DEFAULT_RULES: DeidentifyRule[] = [
     replacement: "[IP_ADDRESS]",
   },
   {
+    id: "amount",
+    label: "金額與價格",
+    detail: "辨識貨幣符號、新台幣/元與金額欄位數值",
+    replacement: "[AMOUNT]",
+  },
+  {
     id: "number",
-    label: "數字",
-    detail: "辨識 3 位數以上的獨立數字",
+    label: "一般數字",
+    detail: "辨識 3 位數以上獨立數字（自動保留規格參數）",
     replacement: "[NUMBER]",
   },
 ];
+
+const CURRENCY_PREFIX = /(?:NT\$|US\$|HK\$|\$|¥|€|£|￥|新台幣|台幣|美金|人民幣|日圓|日幣|歐元)\s*$/i;
+const CURRENCY_SUFFIX = /^\s*(?:元|萬|萬元|億|億元|塊|塊錢|NTD|TWD|USD|RMB|EUR|JPY)(?![A-Za-z0-9\u4e00-\u9fff])/i;
+const AMOUNT_LABEL_PREFIX = /(?:合約金額|金額|總計|小計|總價|單價|報價|費用|預算|底價|款項|未稅|含稅|實收|應付|實付|月租|租金|押金|訂金|工本費|售價|特價|定價)\s*[:：]?\s*$/;
+
+const SPEC_UNIT_SUFFIX = /^\s*(?:[~～-]\s*\d+(?:\.\d+)?\s*)?(?:吋|寸|"|”|mm|cm|km|m\b|坪|平方公尺|平方米|流明|ANSI(?:\s*lm)?|lm|cd\/m²|nits?|dpi|ppi|px|fps|V\b|v\b|W\b|w\b|Hz|kHz|MHz|GHz|A\b|mA|dB|GB|TB|MB|KB|Kbps|Mbps|Gbps|pin|Pin|組|台|支|顆|度|°C|℃|°F|聲道|代|核心)(?![A-Za-z0-9\u4e00-\u9fff])/i;
+const SPEC_RATIO_SUFFIX = /^\s*[:：]\s*(?:1|\d+)(?:\s*(?:含以上|以上|以下))?(?![0-9])/;
+const SPEC_MULTIPLY_SUFFIX = /^\s*[xX*×]\s*\d+/;
+const SPEC_MULTIPLY_PREFIX = /\d+\s*[xX*×]\s*$/;
+const SPEC_RANGE_PREFIX = /(?:\d+(?:\.\d+)?|\d{1,3}(?:,\d{3})+)\s*[~～-]\s*$/;
+const SPEC_RANGE_SUFFIX = /^\s*[~～-]\s*(?:\d+(?:\.\d+)?|\d{1,3}(?:,\d{3})+)/;
+const SPEC_LABEL_PREFIX = /(?:尺寸|畫面尺寸|投影尺寸|對比度|對比|投射比|放大比|鏡頭放大比|解析度|流明|亮度|頻率|電壓|功率|耗電量|重量|頻寬|輸入訊號|輸出訊號|訊號|規格|型號|版本)\s*(?:[:：*x×~～=-]|\s)\s*$/i;
+const TECH_CODE_PREFIX = /(?:HDCP|HDMI|USB|Type-C|Cat\.?|Wi-Fi|Bluetooth|BT|DDR|PCIe|iOS|Android|Windows|macOS)\s*$/i;
+
+export function isSpecificationNumber(text: string, start: number, end: number): boolean {
+  const before = text.slice(Math.max(0, start - 50), start);
+  const after = text.slice(end, Math.min(text.length, end + 50));
+
+  if (CURRENCY_PREFIX.test(before) || CURRENCY_SUFFIX.test(after) || AMOUNT_LABEL_PREFIX.test(before)) {
+    return false;
+  }
+  if (SPEC_RATIO_SUFFIX.test(after)) {
+    return true;
+  }
+  if (SPEC_UNIT_SUFFIX.test(after)) {
+    return true;
+  }
+  if (SPEC_MULTIPLY_SUFFIX.test(after) || SPEC_MULTIPLY_PREFIX.test(before)) {
+    return true;
+  }
+  if (SPEC_LABEL_PREFIX.test(before)) {
+    return true;
+  }
+  if (TECH_CODE_PREFIX.test(before)) {
+    return true;
+  }
+  if (SPEC_RANGE_PREFIX.test(before) || SPEC_RANGE_SUFFIX.test(after)) {
+    const widerContext = text.slice(Math.max(0, start - 60), Math.min(text.length, end + 60));
+    if (
+      /(?:尺寸|對比|放大比|投射比|解析度|流明|頻率|電壓|重量|規格|吋|寸|mm|cm|m|kg|Hz|V|W|ANSI|lm|組|台)/i.test(
+        widerContext,
+      )
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
 
 const PATTERNS: Record<RuleId, RegExp> = {
   email: /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi,
@@ -124,7 +179,8 @@ const PATTERNS: Record<RuleId, RegExp> = {
   customerName: /(?:客戶名稱|客戶名|客戶|買方名稱|委託人名稱)\s*(?:[:：]|\t)\s*[^\n,，。；;|]{2,30}/g,
   contactName: /(?:聯絡人姓名|聯絡人|聯繫人|窗口|承辦人|申請人|負責人|收件人)\s*(?:[:：]|\t)\s*[\u4e00-\u9fff]{2,6}/g,
   name: /(?:姓名|名字|患者|員工|本人)\s*(?:[:：]|\t)\s*[\u4e00-\u9fff]{2,6}/g,
-  number: /\b\d{3,}(?:,\d{3})*(?:\.\d+)?\b/g,
+  amount: /(?:(?<=合約金額[:：\s]|金額[:：\s]|總計[:：\s]|小計[:：\s]|總價[:：\s]|單價[:：\s]|報價[:：\s]|費用[:：\s]|預算[:：\s]|售價[:：\s]|款項[:：\s])\s*(?:NT\$|US\$|\$)?\s*(?:\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?)\s*(?:萬元|億元|元)?|(?:NT\$|US\$|HK\$|\$|¥|€|£|￥)\s*(?:\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?)\s*(?:萬元|億元|元)?|(?:新台幣|台幣|美金|人民幣|日圓|日幣|歐元)\s*(?:\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?)\s*(?:萬元|億元|元)?|(?<![A-Za-z0-9])(?:\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?)\s*(?:萬元|億元|元)(?![A-Za-z0-9\u4e00-\u9fff]))/gi,
+  number: /(?<![A-Za-z0-9])(?:\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d{3,}(?:\.\d+)?)(?![A-Za-z0-9])/g,
 };
 
 export function isValidTaiwanUniformNumber(value: string) {
@@ -162,6 +218,7 @@ export function findDeidentificationRanges(
       const start = match.index;
       const end = start + match[0].length;
       if (rule.id === "uniformNumber" && !isValidTaiwanUniformNumber(match[0])) continue;
+      if (rule.id === "number" && isSpecificationNumber(input, start, end)) continue;
       if (!overlapsExistingRange(start, end)) ranges.push({ start, end, ruleId: rule.id });
       if (match[0].length === 0) pattern.lastIndex += 1;
     }
@@ -197,8 +254,9 @@ export function deidentifyText(
     if (!enabledRuleIds.includes(rule.id)) continue;
     const pattern = PATTERNS[rule.id];
     let count = 0;
-    text = text.replace(pattern, (match) => {
+    text = text.replace(pattern, (match, offset: number) => {
       if (rule.id === "uniformNumber" && !isValidTaiwanUniformNumber(match)) return match;
+      if (rule.id === "number" && isSpecificationNumber(text, offset, offset + match.length)) return match;
       count += 1;
       return rule.replacement;
     });
