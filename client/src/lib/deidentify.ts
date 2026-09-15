@@ -288,3 +288,11 @@ export function deidentifyText(
 export function countCharacters(value: string) {
   return value.length.toLocaleString("zh-TW");
 }
+
+export const REDACTION_TOKEN_REGEX = /\[(?:NAME|PHONE|EMAIL|ID_NUMBER|UNIFORM_NUMBER|AMOUNT|NUMBER|DATE|IP_ADDRESS|ADDRESS|PLACE_NAME|REGION|COMPANY_NAME|CUSTOMER_NAME|CONTACT_NAME|CUSTOM)\]/;
+
+export function hasRedactionTokens(text: string): boolean {
+  if (!text) return false;
+  return REDACTION_TOKEN_REGEX.test(text);
+}
+

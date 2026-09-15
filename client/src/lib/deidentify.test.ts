@@ -1,7 +1,8 @@
 /* Design philosophy: quiet archival utility — tests protect predictable, auditable transformations. */
 
 import { describe, expect, it } from "vitest";
-import { DEFAULT_RULES, deidentifyText, isValidTaiwanUniformNumber } from "./deidentify";
+import { DEFAULT_RULES, deidentifyText, hasRedactionTokens, isValidTaiwanUniformNumber } from "./deidentify";
+
 
 describe("deidentifyText", () => {
   it("replaces enabled sensitive patterns and reports counts", () => {
@@ -171,5 +172,13 @@ HDMI*二組(HDCP2.3)
       "number",
     ]);
   });
+
+  it("detects existing redaction tokens in text", () => {
+    expect(hasRedactionTokens("原始需求說明書內容")).toBe(false);
+    expect(hasRedactionTokens("預算金額：新臺幣[NUMBER]萬元整")).toBe(true);
+    expect(hasRedactionTokens("[REGION][CUSTOM]殯葬服務中心")).toBe(true);
+    expect(hasRedactionTokens("聯絡人：[NAME]")).toBe(true);
+  });
 });
+
 

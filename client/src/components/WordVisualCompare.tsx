@@ -1,8 +1,6 @@
-/* Design philosophy: quiet archival utility — formatted documents preserve typographic hierarchy and table structure. */
-
 import { useMemo, useRef, useState, type UIEvent } from "react";
-import { FileText, Link2, Sparkles, Unlink2 } from "lucide-react";
-import { type RuleId, deidentifyText } from "@/lib/deidentify";
+import { AlertTriangle, FileText, Link2, Sparkles, Unlink2 } from "lucide-react";
+import { type RuleId, deidentifyText, hasRedactionTokens } from "@/lib/deidentify";
 
 type WordVisualCompareProps = {
   html: string;
@@ -11,6 +9,7 @@ type WordVisualCompareProps = {
 };
 
 const TOKEN_REGEX = /(\[(?:NAME|PHONE|EMAIL|ID_NUMBER|UNIFORM_NUMBER|AMOUNT|NUMBER|DATE|IP_ADDRESS|ADDRESS|PLACE_NAME|REGION|COMPANY_NAME|CUSTOMER_NAME|CONTACT_NAME|CUSTOM)\])/g;
+
 
 function transformHtmlToDeidentified(
   rawHtml: string,
@@ -74,10 +73,13 @@ export default function WordVisualCompare({
   const isSyncingLeft = useRef(false);
   const isSyncingRight = useRef(false);
 
+  const containsExistingTokens = useMemo(() => hasRedactionTokens(html), [html]);
+
   const { deidentifiedHtml, changeCount } = useMemo(() => {
     const { html: revised, totalChanges } = transformHtmlToDeidentified(html, enabledRules, customTerms);
     return { deidentifiedHtml: revised, changeCount: totalChanges };
   }, [html, enabledRules, customTerms]);
+
 
   const handleLeftScroll = (e: UIEvent<HTMLDivElement>) => {
     if (!syncScroll || isSyncingLeft.current) return;
@@ -148,7 +150,22 @@ export default function WordVisualCompare({
         </div>
       </div>
 
+
+      {containsExistingTokens && (
+        <div className="word-compare__warning-banner" role="alert">
+          <AlertTriangle size={18} className="word-compare__warning-icon" />
+          <div className="word-compare__warning-text">
+            <strong>智慧提醒：偵測到此文件原文已含有去識別化標記！</strong>
+            <p>
+              原始文件內已包含 <code>[REGION]</code>、<code>[CUSTOM]</code> 或 <code>[NUMBER]</code> 等標記，這通常是因為<strong>選取到了先前下載的去識別化成果檔案</strong>（例如檔名帶有 <code>-local.docx</code>）。
+              若要對比真正的處理前後差異，請返回「步驟 1：匯入來源」重新選取最初未遮蔽的原始文件。
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="word-compare__panes">
+
         {/* 左欄：原始 Word 文件排版 */}
         <div className="word-pane">
           <div className="word-pane__title">

@@ -1,8 +1,9 @@
 /* Design philosophy: quiet archival utility — spreadsheets feel tangible with explicit gridlines and clear audit marks. */
 
 import { useMemo, useRef, useState, type UIEvent } from "react";
-import { CheckCircle2, FileSpreadsheet, Link2, Sparkles, Unlink2 } from "lucide-react";
-import { type RuleId, deidentifyText } from "@/lib/deidentify";
+import { AlertTriangle, CheckCircle2, FileSpreadsheet, Link2, Sparkles, Unlink2 } from "lucide-react";
+import { type RuleId, deidentifyText, hasRedactionTokens } from "@/lib/deidentify";
+
 import { type SpreadsheetSheet } from "@/lib/documents";
 
 type SpreadsheetVisualCompareProps = {
@@ -56,6 +57,11 @@ export default function SpreadsheetVisualCompare({
     });
     return { changedSet: set, totalChangedCount: count };
   }, [originalRows, deidentifiedRows]);
+
+  const containsExistingTokens = useMemo(() => {
+    return originalRows.some((row) => row.some((cell) => hasRedactionTokens(cell)));
+  }, [originalRows]);
+
 
   const maxCols = useMemo(() => {
     return Math.max(1, originalRows.reduce((max, row) => Math.max(max, row.length), 0));
@@ -141,7 +147,21 @@ export default function SpreadsheetVisualCompare({
         </div>
       </div>
 
+      {containsExistingTokens && (
+        <div className="word-compare__warning-banner" role="alert">
+          <AlertTriangle size={18} className="word-compare__warning-icon" />
+          <div className="word-compare__warning-text">
+            <strong>智慧提醒：偵測到此試算表原文已含有去識別化標記！</strong>
+            <p>
+              原始內容已包含 <code>[REGION]</code>、<code>[CUSTOM]</code> 或 <code>[NUMBER]</code> 等標記，這通常是因為<strong>選取到了先前下載的成果檔案</strong>（例如檔名帶有 <code>-local.xlsx</code>）。
+              若要對比真正的處理前後差異，請返回「步驟 1：匯入來源」重新選取最初未遮蔽的原始試算表。
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="spreadsheet-compare__panes">
+
         {/* 左欄：原始試算表 */}
         <div className="spreadsheet-pane">
           <div className="spreadsheet-pane__title">

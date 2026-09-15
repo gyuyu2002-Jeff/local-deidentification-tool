@@ -1838,6 +1838,53 @@ html[data-reading-mode="large"] { --reading-body: 1.22; --reading-control: 1.16;
   font-size: 12px;
 }
 
+.word-compare__warning-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 18px;
+  background: rgba(176, 92, 45, 0.08);
+  border: 1px solid rgba(176, 92, 45, 0.35);
+  border-left: 5px solid var(--amber);
+  border-radius: 4px;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.word-compare__warning-icon {
+  flex-shrink: 0;
+  color: var(--amber);
+  margin-top: 2px;
+}
+
+.word-compare__warning-text {
+  flex: 1;
+}
+
+.word-compare__warning-text strong {
+  display: block;
+  font-size: 14px;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+
+.word-compare__warning-text p {
+  margin: 0;
+  color: var(--ink-soft);
+}
+
+.word-compare__warning-text code {
+  background: rgba(176, 92, 45, 0.15);
+  color: var(--amber);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+
 /* ==========================================================================
    Inline PDF Box for Step 3
    ========================================================================== */

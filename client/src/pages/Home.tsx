@@ -4,6 +4,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  AlertTriangle,
   ArrowDownToLine,
   Cookie as CookieIcon,
   Check,
@@ -86,6 +87,7 @@ import {
   countCharacters,
   DEFAULT_RULES,
   deidentifyText,
+  hasRedactionTokens,
   type RuleId,
 } from "@/lib/deidentify";
 import { downloadCustomDictionary, parseCustomDictionary } from "@/lib/custom-dictionary";
@@ -779,6 +781,14 @@ export default function Home() {
       <div className="clear-scope-note"><Info size={13} /> 清除會移除工作區記憶體中的原文、結果、檔案資訊、OCR 狀態與自訂關鍵字；不影響已下載的結果檔。</div>
       {parseError && <div className={parseError.startsWith("已取消") ? "parse-warning parse-cancelled" : "parse-error"}><Info size={14} /> {parseError}</div>}
       {parsedDocument?.warnings.map((warning) => <div className={`parse-warning ${warning.includes("本機使用繁體中文 OCR") ? "parse-warning--ocr" : ""}`} key={warning}><Info size={14} /> {warning}</div>)}
+      {hasRedactionTokens(input) && (
+        <div className="parse-warning parse-warning--ocr" role="alert" style={{ marginTop: "10px" }}>
+          <AlertTriangle size={15} />
+          <span>
+            <strong>智慧防呆提醒：</strong>偵測到您目前輸入／匯入的原文已含有 <code>[REGION]</code>、<code>[CUSTOM]</code> 或 <code>[NUMBER]</code> 等標籤。這通常是<strong>選取到了先前下載的成果檔</strong>{fileName ? `（${fileName}）` : ""}。若要對比處理前與處理後的效果，請清除或重新選取最初未遮蔽的原稿。
+          </span>
+        </div>
+      )}
     </div>
   );
 
